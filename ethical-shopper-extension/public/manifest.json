@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Ethical Shopper",
+  "version": "0.1.0",
+  "description": "Detects checkout pages and suggests ethical alternatives.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*", "popup.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
