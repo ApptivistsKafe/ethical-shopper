@@ -14,6 +14,8 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/chrome": "^0.0.260",
     "@types/node": "^20.11.20",
     "@types/react": "^18.2.58",
@@ -24,9 +26,11 @@
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jsdom": "^26.0.0",
     "sass": "^1.71.1",
     "typescript": "^5.3.3",
     "vite": "^6.2.1",
-    "vitest": "^3.0.8"
+    "vitest": "^3.0.8",
+    "vitest-dom": "^0.1.1"
   }
 }
