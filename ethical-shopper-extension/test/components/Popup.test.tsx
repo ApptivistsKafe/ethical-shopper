@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Popup } from '../../src/components/Popup';
 
@@ -24,8 +24,10 @@ describe('Popup', () => {
     mockChrome.scripting.executeScript.mockReset();
   });
 
-  it('should show loading state initially', () => {
-    render(<Popup />);
+  it('should show loading state initially', async () => {
+    await act(async () => {
+      render(<Popup />);
+    });
     expect(screen.getByText('Checking page...')).toBeDefined();
   });
 
@@ -38,17 +40,19 @@ describe('Popup', () => {
     // Mock successful script execution
     mockChrome.scripting.executeScript.mockResolvedValue([{ result: true }]);
 
-    render(<Popup />);
+    let rendered;
+    await act(async () => {
+      rendered = render(<Popup />);
+    });
 
-    // Initially should show loading
+    // Verify initial loading state
     expect(screen.getByText('Checking page...')).toBeDefined();
 
     // Wait for checkout detection to complete
     await waitFor(() => {
-      expect(screen.getByText('Checkout Detected!')).toBeDefined();
+      return expect(screen.getByText('Checkout Detected!')).toBeDefined();
     });
 
-    // Verify show alternatives button is present
     expect(screen.getByText('Show Alternatives')).toBeDefined();
   });
 
@@ -61,10 +65,12 @@ describe('Popup', () => {
     // Mock script execution returning false
     mockChrome.scripting.executeScript.mockResolvedValue([{ result: false }]);
 
-    render(<Popup />);
+    await act(async () => {
+      render(<Popup />);
+    });
 
     await waitFor(() => {
-      expect(screen.getByText('Not a Checkout Page')).toBeDefined();
+      return expect(screen.getByText('Not a Checkout Page')).toBeDefined();
     });
 
     expect(
@@ -75,15 +81,19 @@ describe('Popup', () => {
     // Mock tab query failing
     mockChrome.tabs.query.mockRejectedValue(new Error('Failed to get tab'));
 
-    render(<Popup />);
+    await act(async () => {
+      render(<Popup />);
+    });
 
     await waitFor(() => {
-      expect(screen.getByText('Not a Checkout Page')).toBeDefined();
+      return expect(screen.getByText('Not a Checkout Page')).toBeTruthy();
     });
   });
 
-  it('should use provided isCheckoutForTesting prop when available', () => {
-    render(<Popup isCheckoutForTesting={true} />);
+  it('should use provided isCheckoutForTesting prop when available', async () => {
+    await act(async () => {
+      render(<Popup isCheckoutForTesting={true} />);
+    });
 
     // Should skip loading state and show checkout detected immediately
     expect(screen.queryByText('Checking page...')).toBeNull();
@@ -92,7 +102,9 @@ describe('Popup', () => {
 
   it('should log when Show Alternatives button is clicked', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    render(<Popup isCheckoutForTesting={true} />);
+    await act(async () => {
+      render(<Popup isCheckoutForTesting={true} />);
+    });
 
     const button = screen.getByText('Show Alternatives');
     await userEvent.click(button);

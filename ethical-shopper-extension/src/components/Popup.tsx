@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { isCheckoutPage } from '../services/checkoutDetector';
 
 interface PopupProps {
   isCheckoutForTesting?: boolean;
@@ -19,19 +20,24 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting }) => {
       try {
         // Get the active tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.url) return;
+        if (!tab?.url) {
+          setIsCheckout(false);
+          setLoading(false);
+          return;
+        }        if (!tab.id) throw new Error('No tab id found');
 
         // Check if it's a checkout page
-        const result = await chrome.scripting.executeScript({
-          target: { tabId: tab.id! },
-          func: (url) => {
-            console.log(url);
-            return document.location.href.includes('checkout');  // Simplified for dev
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (url: string) => {
+            // This function runs in the context of the web page
+            return isCheckoutPage(url, document);
           },
-          args: [tab.url]
+          args: [tab.url],
+          world: 'MAIN' // Ensures we have access to the page's document
         });
 
-        setIsCheckout(result[0]?.result ?? false);
+        setIsCheckout(results?.[0]?.result ?? false);
       } catch (error) {
         console.error('Error checking page:', error);
         setIsCheckout(false);

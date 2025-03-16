@@ -52,7 +52,18 @@ interface CacheData {
   expiry: number;
 }
 
+// Check if we're in development environment (no chrome.storage available)
+const isDevelopment = typeof chrome === 'undefined' || !chrome.storage;
+
+async function getCacheResult(url: string): Promise<CacheData | undefined> {
+  if (isDevelopment) return undefined;
+  const result = await chrome.storage.local.get([url]);
+  const cacheData = result[url] as CacheData;
+  return cacheData.expiry > Date.now() ? cacheData : undefined;
+}
+
 async function setCacheResult(url: string, isCheckout: boolean): Promise<void> {
+  if (isDevelopment) return;
   const cacheData: CacheData = {
     isCheckout,
     expiry: Date.now() + 30000, // 30 seconds
@@ -63,12 +74,9 @@ async function setCacheResult(url: string, isCheckout: boolean): Promise<void> {
 export async function isCheckoutPage(url: string, doc: Document): Promise<boolean> {
   try {
     // 1. Check cache
-    const cacheResult = await chrome.storage.local.get([url]);
-    if (cacheResult[url]) {
-      const cacheData = cacheResult[url] as CacheData;
-      if (cacheData.expiry > Date.now()) {
-        return cacheData.isCheckout;
-      }
+    const cacheData = await getCacheResult(url);
+    if (cacheData) {
+      return cacheData.isCheckout;
     }
 
     // 2. Domain Matching
@@ -117,7 +125,8 @@ export async function isCheckoutPage(url: string, doc: Document): Promise<boolea
       // Check for keywords in element IDs, classes, or text content within the entire document
       const keywords = ["checkout", "cart", "shipping", "payment", "subtotal", "total"];
       if (keywords.some(keyword => doc.body.innerHTML.match(new RegExp(`\\b${keyword}\\b`, 'i')))) {
-        confidence += 0.5; // Lower confidence for broad text matches
+        // confidence += 0.5; // Lower confidence for broad text matches
+        return true;
       }
 
     } catch (error) {
