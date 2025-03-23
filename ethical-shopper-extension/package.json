@@ -5,13 +5,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "watch": "watch 'tsc && vite build' ./src",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest"
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "watch": "^0.13.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.2.0",

@@ -1,16 +1,15 @@
 import { isCheckoutPage } from '../services/checkoutDetector';
 
-// Listen for messages from the popup
+// Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'CHECK_CHECKOUT') {
-    isCheckoutPage(window.location.href, document)
-      .then(result => {
-        sendResponse({ isCheckout: result });
-      })
-      .catch(error => {
-        console.error('Error checking checkout status:', error);
-        sendResponse({ isCheckout: false, error: error.message });
-      });
-    return true; // Required for async response
+    // Execute immediately and handle response
+    (async () => {
+      const result = await isCheckoutPage(window.location.href, document);
+      sendResponse({ isCheckout: result });
+    })().catch(error => sendResponse({ isCheckout: false, error: error.message }));
+
+    // Return true to indicate we will respond asynchronously
+    return true;
   }
 });

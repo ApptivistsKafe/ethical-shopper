@@ -7,40 +7,6 @@ interface ChromeAPI {
 
 // Initialize background script with dependency injection for better testability
 export function initBackgroundScript(chromeInstance: ChromeAPI) {
-  // Listen for tab updates to detect checkout pages automatically
-  chromeInstance.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url) {
-      try {
-        const result = await chromeInstance.scripting.executeScript({
-          target: { tabId },
-          files: ['src/content/content.ts']
-        });
-
-        // If it's a checkout page:
-        // 1. Update the extension icon
-        // 2. Show a notification
-        // 3. Cache the result
-        if (result[0]?.result) {
-          chromeInstance.action.setBadgeText({
-            text: '✓',
-            tabId
-          });
-          chromeInstance.action.setBadgeBackgroundColor({
-            color: '#4CAF50',
-            tabId
-          });
-        } else {
-          chromeInstance.action.setBadgeText({
-            text: '',
-            tabId
-          });
-        }
-      } catch (error) {
-        console.error('Error executing content script:', error);
-      }
-    }
-  });
-
   // Listen for messages from other parts of the extension
   chromeInstance.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.type === 'GET_ALTERNATIVES') {

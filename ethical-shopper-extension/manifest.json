@@ -9,24 +9,25 @@
     "scripting"
   ],
   "background": {
-    "service_worker": "src/background/background.ts"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/content.ts"]
+      "js": ["content.js"]
     }
   ],
   "action": {
-    "default_popup": "src/popup/popup.html"
+    "default_popup": "popup.html"
   },
   "host_permissions": [
     "<all_urls>"
   ],
-    "web_accessible_resources": [
+  "web_accessible_resources": [
     {
-      "resources": [ "src/popup/popup.html"],
-      "matches": [ "<all_urls>" ]
+      "resources": ["popup.html", "content.js"],
+      "matches": ["<all_urls>"]
     }
   ],
   "browser_specific_settings": {
