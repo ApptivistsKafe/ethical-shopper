@@ -47,37 +47,12 @@ const websites: Website[] = [
   }
 ];
 
-interface CacheData {
-  isCheckout: boolean;
-  expiry: number;
-}
 
 // Check if we're in development environment (no chrome.storage available)
-const isDevelopment = typeof chrome === 'undefined' || !chrome.storage;
-
-async function getCacheResult(url: string): Promise<CacheData | undefined> {
-  if (isDevelopment) return undefined;
-  const result = await chrome.storage.local.get([url]);
-  const cacheData = result[url] as CacheData;
-  return cacheData.expiry > Date.now() ? cacheData : undefined;
-}
-
-async function setCacheResult(url: string, isCheckout: boolean): Promise<void> {
-  if (isDevelopment) return;
-  const cacheData: CacheData = {
-    isCheckout,
-    expiry: Date.now() + 30000, // 30 seconds
-  };
-  await chrome.storage.local.set({ [url]: cacheData });
-}
+// const isDevelopment = typeof chrome === 'undefined' || !chrome.storage;
 
 export async function isCheckoutPage(url: string, doc: Document): Promise<boolean> {
   try {
-    // 1. Check cache
-    const cacheData = await getCacheResult(url);
-    if (cacheData) {
-      return cacheData.isCheckout;
-    }
 
     // 2. Domain Matching
     const matchedWebsite = websites.find((website) =>
@@ -88,7 +63,6 @@ export async function isCheckoutPage(url: string, doc: Document): Promise<boolea
     if (matchedWebsite) {
       for (const pattern of matchedWebsite.checkoutPatterns) {
         if (pattern.test(url)) {
-          await setCacheResult(url, true);
           return true;
         }
       }
@@ -98,45 +72,43 @@ export async function isCheckoutPage(url: string, doc: Document): Promise<boolea
     let confidence = 0;
 
     // URL Keywords
-    const urlKeywords = ["checkout", "cart", "order", "pay"];
+    const urlKeywords = ["checkout", "cart"];
     if (urlKeywords.some((keyword) => url.match(new RegExp(`\\b${keyword}\\b`, 'i')))) {
-      confidence++;
+      return true;
     }
 
     // DOM Analysis (Limited to <form> elements)
-    try {
-      const forms = doc.querySelectorAll("form");
-      forms.forEach((form) => {
-        // Input Fields
-        if (
-          form.querySelector(
-            'input[type="email"], input[type="tel"], input[type="password"], input[type="number"]'
-          )
-        ) {
-          confidence++;
-        }
+    // try {
+    //   const forms = doc.querySelectorAll("form");
+    //   forms.forEach((form) => {
+    //     // Input Fields
+    //     if (
+    //       form.querySelector(
+    //         'input[type="email"], input[type="tel"], input[type="password"], input[type="number"]'
+    //       )
+    //     ) {
+    //       confidence++;
+    //     }
 
-        // Form Action
-        if (form.action && urlKeywords.some((keyword) => form.action.includes(keyword))) {
-          confidence++;
-        }
-      });
+    //     // Form Action
+    //     if (form.action && urlKeywords.some((keyword) => form.action.includes(keyword))) {
+    //       confidence++;
+    //     }
+    //   });
 
-      // Check for keywords in element IDs, classes, or text content within the entire document
-      const keywords = ["checkout", "cart", "shipping", "payment", "subtotal", "total"];
-      if (keywords.some(keyword => doc.body.innerHTML.match(new RegExp(`\\b${keyword}\\b`, 'i')))) {
-        // confidence += 0.5; // Lower confidence for broad text matches
-        return true;
-      }
+    //   // Check for keywords in element IDs, classes, or text content within the entire document
+    //   const keywords = ["checkout", "cart", "shipping", "payment", "subtotal", "total", "address"];
+    //   if (keywords.some(keyword => doc.body.innerHTML.match(new RegExp(`\\b${keyword}\\b`, 'i')))) {
+    //     confidence += 0.5; // Lower confidence for broad text matches
+    //     // return true;
+    //   }
 
-    } catch (error) {
-      console.error("Error during DOM analysis:", error);
-      await setCacheResult(url, false);
-      return false;
-    }
+    // } catch (error) {
+    //   console.error("Error during DOM analysis:", error);
+    //   return false;
+    // }
 
     const result = confidence >= 2;
-    await setCacheResult(url, result);
     return result;
 
   } catch (error) {
