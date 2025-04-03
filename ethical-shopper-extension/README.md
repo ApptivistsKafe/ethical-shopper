@@ -6,6 +6,7 @@ A browser extension that detects when you're on a checkout page and suggests eth
 
 - Automatic checkout page detection across major e-commerce sites
 - Smart detection using URL patterns and DOM analysis
+- Interactive AI assistant for personalized ethical shopping advice
 - Popup interface showing ethical alternatives
 - Support for Chrome, Firefox, and Safari
 
@@ -16,12 +17,20 @@ A browser extension that detects when you're on a checkout page and suggests eth
 npm install
 ```
 
-2. Start development server:
+2. Set up environment:
+   - Copy `.env.example` to `.env`
+   - Get your Google AI API key from [Google AI Studio](https://ai.google.dev/)
+   - Add your API key to the `.env` file:
+     ```
+     GOOGLE_AI_API_KEY=your_api_key_here
+     ```
+
+3. Start development server:
 ```bash
 npm run dev
 ```
 
-3. Load the extension in Chrome:
+4. Load the extension in Chrome:
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable "Developer mode" in the top right
    - Click "Load unpacked" and select the `dist` directory
@@ -58,7 +67,8 @@ ethical-shopper-extension/
 │   ├── components/
 │   │   └── Popup.tsx
 │   ├── services/
-│   │   └── checkoutDetector.ts
+│   │   ├── checkoutDetector.ts
+│   │   └── aiService.ts
 │   ├── popup/
 │   │   ├── popup.html
 │   │   └── popup.tsx

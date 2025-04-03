@@ -1,40 +1,38 @@
-interface ChromeAPI {
-  tabs: Pick<typeof chrome.tabs, 'onUpdated'>;
-  runtime: Pick<typeof chrome.runtime, 'onMessage'>;
-  scripting: Pick<typeof chrome.scripting, 'executeScript'>;
-  action: Pick<typeof chrome.action, 'setBadgeText' | 'setBadgeBackgroundColor'>;
-}
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { config } from '../config';
 
-// Initialize background script with dependency injection for better testability
-export function initBackgroundScript(chromeInstance: ChromeAPI) {
-  // Listen for messages from other parts of the extension
-  chromeInstance.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.type === 'GET_ALTERNATIVES') {
-      // TODO: Implement fetching ethical alternatives
-      // This would connect to a backend service or database
-      sendResponse({
-        alternatives: [
-          // Example data - would be replaced with real alternatives
-          {
-            name: 'Ethical Store 1',
-            url: 'https://example.com/ethical1',
-            rating: 4.5,
-            description: 'Fair trade certified'
-          },
-          {
-            name: 'Ethical Store 2',
-            url: 'https://example.com/ethical2',
-            rating: 4.8,
-            description: 'Sustainable and eco-friendly'
-          }
-        ]
-      });
-      return true;
+// Check if we're in the extension context
+const isExtensionContext = typeof chrome !== 'undefined' && chrome.runtime?.id !== undefined;
+
+// Only set up message handling if we're in the extension context
+if (isExtensionContext) {
+  const genAI = new GoogleGenerativeAI(config.GOOGLE_AI_API_KEY);
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'GENERATE_AI_RESPONSE') {
+      generateAIResponse(message.prompt)
+        .then(response => {
+          sendResponse({ success: true, data: response });
+        })
+        .catch(error => {
+          console.error('Background script error:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      return true; // Will respond asynchronously
     }
   });
-}
 
-// Initialize with the real chrome API when running as extension
-if (typeof chrome !== 'undefined') {
-  initBackgroundScript(chrome);
+  async function generateAIResponse(prompt: string): Promise<string> {
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      throw error;
+    }
+  }
+} else {
+  console.log('Running in development environment - background script not initialized');
 }
