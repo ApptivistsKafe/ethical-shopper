@@ -4,9 +4,15 @@
 - Created `productContext.md`
 - Created `activeContext.md`
 - Created `decisionLog.md`
-- Fixed extension build configuration:
-  - Updated vite.config.ts for proper popup.html handling
-  - Resolved Chrome ERR_FILE_NOT_FOUND error
+- **Completed build system conversion from Vite to Webpack:**
+  - Installed Webpack dependencies
+  - Created `webpack.config.js` (renamed to `.cjs`)
+  - Updated `package.json` scripts (`dev`, `build`, added `watch`)
+  - Removed Vite dependencies and configuration
+  - Fixed `tsconfig.json` for Webpack/ts-loader compatibility
+  - Corrected React/ReactDOM imports
+  - Successfully tested `npm run build` and `npm run dev`
+- Fixed extension build configuration issues (related to previous Vite setup)
 - Added project organization improvements:
   - Created .gitignore for proper version control
   - Configured build artifact exclusions
@@ -36,6 +42,7 @@
 
 ## Next Steps
 
+- **Test Extension Functionality:** Manually load the unpacked extension (from `dist/`) into a browser and verify popup, content script, and background script interactions.
 - Enhance AI Features:
   - Implement response streaming for better UX
   - Add conversation history support
@@ -57,6 +64,7 @@
   - Resolve cache functionality issues
   - Fix storage mocking in tests
   - Improve DOM error handling
+  - **Adapt tests to Webpack environment (if needed, currently using Vitest)**
 - Complete testing UI:
   - Add more test cases
   - Improve UI feedback
@@ -66,17 +74,17 @@
   - Add ethical alternative suggestions
   - Enhance user interface interactions
 - Cross-browser development:
-  - Create browser-specific build configurations
+  - Create browser-specific build configurations (using Webpack)
   - Implement fallbacks for unsupported APIs
   - Test messaging system across browsers
 - Documentation improvements:
   - Add browser compatibility notes
-  - Document build process for each browser
+  - Document Webpack build process for each browser
   - Create deployment guides for different stores
   - Add AI integration documentation
   - Document environment setup process
 - Set up continuous integration workflow:
   - Add multi-browser testing pipeline
   - Implement automated compatibility checks
-  - Set up separate build targets per browser
+  - Set up separate build targets per browser (using Webpack)
   - Add API key security checks

@@ -113,3 +113,27 @@
 - Secure message passing for extension context
 - Error handling for API failures
 - Rate limiting considerations documented
+
+### [2025-04-03] - Build System Migration: Vite to Webpack
+**Context:** The project initially used Vite for building and development. While Vite offers fast development startup, Webpack provides more mature and flexible configuration options, especially for complex build requirements like Chrome extensions, and has wider community support and tooling integration.
+**Decision:** Migrate the project's build system from Vite to Webpack.
+- Install Webpack, loaders (ts-loader, sass-loader, css-loader, style-loader), and plugins (HtmlWebpackPlugin, CopyWebpackPlugin, DotenvWebpackPlugin).
+- Create a `webpack.config.js` file defining entry points (popup, content, background, dev), output, module rules, plugins, and dev server settings.
+- Update `package.json` scripts (`dev`, `build`) to use Webpack commands.
+- Remove Vite dependencies and configuration files (`vite.config.ts`, `vitest.config.ts`).
+**Rationale:**
+- Greater configuration flexibility for extension-specific build needs.
+- More robust handling of different entry points and asset types.
+- Leverage the extensive Webpack ecosystem and community support.
+- Standardize on a widely used and well-understood build tool.
+**Implementation:**
+- Installed necessary npm packages.
+- Created `webpack.config.js` (later renamed to `webpack.config.cjs`).
+- Updated `package.json` (added `watch` script).
+- Removed Vite files and dependencies (`vite.config.ts`, `vitest.config.ts`, `tsconfig.node.json`).
+- **Troubleshooting:**
+  - Renamed `webpack.config.js` to `.cjs` to resolve ES module/CommonJS conflict.
+  - Updated `tsconfig.json` (`noEmit: false`, `isolatedModules: false`, `moduleResolution: node`, `allowSyntheticDefaultImports: true`, removed Vite types/references).
+  - Corrected `ReactDOM` import syntax in `.tsx` files.
+- Successfully tested `npm run build` and `npm run dev`.
+- Updated Memory Bank files (`activeContext.md`, `progress.md`, `decisionLog.md`, `systemPatterns.md`) to reflect the change and troubleshooting.

@@ -49,6 +49,17 @@
    - Mock implementations for browser APIs
    - Testing-friendly abstractions
 
+
+3. Build System (Webpack)
+   - Uses Webpack for bundling TypeScript, React, and SCSS.
+   - Configuration (`webpack.config.cjs`) handles:
+     - Multiple entry points (popup, content, background, dev).
+     - TypeScript compilation (`ts-loader`).
+     - SCSS/CSS processing (`sass-loader`, `css-loader`, `style-loader`).
+     - HTML generation (`HtmlWebpackPlugin`).
+     - Static asset copying (`CopyWebpackPlugin`).
+     - Environment variable injection (`DotenvWebpackPlugin`).
+   - Separate configurations for development (with `webpack-dev-server`) and production.
 ### Data Flow
 
 1. Checkout Detection

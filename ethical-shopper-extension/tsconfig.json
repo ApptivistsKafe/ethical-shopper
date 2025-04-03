@@ -3,16 +3,17 @@
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
+    "module": "ESNext", // Keep ESNext for modern syntax, Webpack handles bundling
     "skipLibCheck": true,
     "allowJs": true,
+    "allowSyntheticDefaultImports": true,
 
     /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "moduleResolution": "node", // Use standard Node resolution for Webpack
+    // "allowImportingTsExtensions": true, // Remove this
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "isolatedModules": false, // Set to false for ts-loader
+    "noEmit": false, // Allow TypeScript to emit JS files for Webpack
     "jsx": "react-jsx",
 
     /* Linting */
@@ -29,9 +30,9 @@
     },
 
     /* Type Definitions */
-    "types": ["vite/client", "chrome", "node"]
+    "types": ["chrome", "node"] // Remove "vite/client"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "vite.config.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": ["node_modules"], // Remove "vite.config.ts"
+  // "references": [{ "path": "./tsconfig.node.json" }] // Remove reference
 }
