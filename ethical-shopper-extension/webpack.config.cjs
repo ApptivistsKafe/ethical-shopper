@@ -11,7 +11,7 @@ module.exports = {
   entry: {
     // Production entries
     popup: './src/popup/popup.tsx',
-    content: './src/content/content.ts',
+    content: './src/content/content.tsx',
     background: './src/background/background.ts',
     // Development entry (only used by dev server)
     dev: './src/dev/main.tsx',

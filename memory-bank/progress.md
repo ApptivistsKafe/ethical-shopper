@@ -1,5 +1,9 @@
 ## Work Done
 
+- **Refactored Content Script to use React:**
+  - Created `src/content/content.tsx` with a basic React component and injection logic.
+  - Updated `webpack.config.cjs` to use `src/content/content.tsx` as the entry point.
+  - Removed the old `src/content/content.ts` file.
 - Initialized Memory Bank
 - Created `productContext.md`
 - Created `activeContext.md`
@@ -42,7 +46,10 @@
 
 ## Next Steps
 
-- **Test Extension Functionality:** Manually load the unpacked extension (from `dist/`) into a browser and verify popup, content script, and background script interactions.
+- **Test Content Script React Implementation:**
+  - Run `npm run build` to generate the new `dist/content.js`.
+  - Manually load the unpacked extension (from `dist/`) into a browser and verify the React component appears correctly in the top-right corner on various web pages.
+- **Test Extension Functionality:** Manually load the unpacked extension (from `dist/`) into a browser and verify popup and background script interactions (in addition to the content script).
 - Enhance AI Features:
   - Implement response streaming for better UX
   - Add conversation history support
