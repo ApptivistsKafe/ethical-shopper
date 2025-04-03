@@ -1,13 +1,22 @@
 ## Current Session Context
 
-[Date and time of update: 2025-04-03 2:47 PM EDT]
+[Date and time of update: 2025-04-03 2:59 PM EDT]
 
 ## Recent Changes
 
+- **Updated Content Script to Render Full Popup:**
+  - Modified `src/components/Popup.tsx`:
+    - Added `isContentScriptContext` prop.
+    - Imported `isCheckoutPage` service.
+    - Added logic to `useEffect` to call `isCheckoutPage` directly (using `await`) when `isContentScriptContext` is true, bypassing `chrome.tabs` APIs.
+  - Modified `src/content/content.tsx`:
+    - Changed import of `Popup` to named import (`{ Popup }`).
+    - Passed `isContentScriptContext={true}` prop to the rendered `Popup` component.
 - **Refactored Content Script to use React:**
   - Created `src/content/content.tsx` with a basic React component and injection logic.
   - Updated `webpack.config.cjs` to use `src/content/content.tsx` as the entry point for the `content` bundle.
   - Removed the old `src/content/content.ts` file.
+  - Tested initial React component injection successfully.
 - **Completed build system conversion from Vite to Webpack:**
   - Installed Webpack and related dependencies (loaders, plugins).
   - Created `webpack.config.js` (later renamed to `webpack.config.cjs` to resolve module type conflict).
@@ -48,9 +57,12 @@
 
 ## Current Goals
 
-- **Test Content Script React Implementation:**
-  - Run `npm run build` to generate the new `dist/content.js`.
-  - Manually load the unpacked extension and verify the React component appears on web pages.
+- **Test Content Script Popup Implementation:**
+  - Run `npm run build`.
+  - Manually load the unpacked extension and verify the full `Popup` component renders correctly within the content script context on various pages, correctly identifying checkout/non-checkout status.
+- **(Completed)** Test Content Script React Implementation:**
+  - ~~Run `npm run build` to generate the new `dist/content.js`.~~ (Done)
+  - ~~Manually load the unpacked extension and verify the React component appears on web pages.~~ (Done)
 - **(Completed)** Test Webpack Build:
   - ~~Verify `npm run build` creates the correct `dist/` structure and bundles.~~ (Done)
   - ~~Verify `npm run dev` starts the development server correctly.~~ (Done)

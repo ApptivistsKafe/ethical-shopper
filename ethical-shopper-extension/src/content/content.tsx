@@ -1,6 +1,6 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import {Popup from '../components/Popup'; // Import the main Popup component
+import {Popup} from '../components/Popup'; // Import the main Popup component
 import '../styles.scss'; // Import global styles
 
 // Create a root element in the host page
@@ -16,7 +16,7 @@ document.body.appendChild(rootElement);
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <Popup />
+    <Popup isContentScriptContext={true} />
   </React.StrictMode>
 );
 

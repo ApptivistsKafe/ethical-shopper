@@ -1,9 +1,13 @@
 ## Work Done
 
+- **Updated Content Script to Render Full Popup:**
+  - Modified `src/components/Popup.tsx` to handle content script context (added prop, imported `isCheckoutPage`, updated `useEffect` logic with `await`).
+  - Modified `src/content/content.tsx` to use named import for `Popup` and pass `isContentScriptContext={true}` prop.
 - **Refactored Content Script to use React:**
   - Created `src/content/content.tsx` with a basic React component and injection logic.
   - Updated `webpack.config.cjs` to use `src/content/content.tsx` as the entry point.
   - Removed the old `src/content/content.ts` file.
+  - Successfully tested initial React component injection.
 - Initialized Memory Bank
 - Created `productContext.md`
 - Created `activeContext.md`
@@ -46,9 +50,9 @@
 
 ## Next Steps
 
-- **Test Content Script React Implementation:**
-  - Run `npm run build` to generate the new `dist/content.js`.
-  - Manually load the unpacked extension (from `dist/`) into a browser and verify the React component appears correctly in the top-right corner on various web pages.
+- **Test Content Script Popup Implementation:**
+  - Run `npm run build`.
+  - Manually load the unpacked extension (from `dist/`) into a browser and verify the full `Popup` component renders correctly within the content script context on various pages, correctly identifying checkout/non-checkout status using the direct check logic.
 - **Test Extension Functionality:** Manually load the unpacked extension (from `dist/`) into a browser and verify popup and background script interactions (in addition to the content script).
 - Enhance AI Features:
   - Implement response streaming for better UX
