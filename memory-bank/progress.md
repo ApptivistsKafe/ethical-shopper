@@ -53,7 +53,7 @@
 
 ## Next Steps
 
-- **Test Conditional Content Script Popup:**
+- **Test Conditional Content Script Popup:** (Immediate Next Step)
   - Run `npm run build`.
   - Manually load the unpacked extension (from `dist/`) into a browser.
   - Verify the `Popup` only appears on pages detected as checkout pages.
