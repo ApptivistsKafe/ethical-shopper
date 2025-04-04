@@ -5,9 +5,10 @@ import { isCheckoutPage } from '../services/checkoutDetector'; // Import the det
 interface PopupProps {
   isCheckoutForTesting?: boolean;
   isContentScriptContext?: boolean; // Flag for content script context
+  onDismiss?: () => void; // Optional dismiss handler
 }
 
-export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScriptContext }) => {
+export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScriptContext, onDismiss }) => {
   const [isCheckout, setIsCheckout] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [prompt, setPrompt] = useState('');
@@ -23,12 +24,9 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
       // If running in content script context, check directly
       if (isContentScriptContext) {
         try {
-          console.log('Popup (Content Script): Checking current page directly...');
           const result = await isCheckoutPage(window.location.href, document); // Await the promise
-          console.log('Popup (Content Script): Direct check result:', result);
           setIsCheckout(result);
         } catch (err) {
-          console.error('Popup (Content Script): Error during direct checkout check:', err);
           setError('Error checking page status.');
           setIsCheckout(false);
         } finally {
@@ -54,38 +52,31 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
       }
 
       try {
-        console.log('Popup (Extension Popup): Querying active tab...');
         // Get the active tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab?.id || !tab?.url) {
-          console.log('Popup (Extension Popup): No active tab found or missing ID/URL.');
           setIsCheckout(false);
           setLoading(false);
           return;
         }
-        console.log('Popup (Extension Popup): Found active tab:', tab.id, tab.url);
 
         // Send message to content script to check if it's a checkout page
-        console.log('Popup (Extension Popup): Sending CHECK_CHECKOUT message to tab:', tab.id);
         chrome.tabs.sendMessage(
           tab.id,
           { type: 'CHECK_CHECKOUT' },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.error('Popup (Extension Popup): Error receiving message:', chrome.runtime.lastError.message);
               // Don't assume it's not a checkout page, maybe the content script isn't injected yet or failed
               // setError(`Error communicating with page: ${chrome.runtime.lastError.message}`);
               // Keep isCheckout as null or handle appropriately, maybe retry? For now, set to false.
               setIsCheckout(false);
             } else {
-              console.log('Popup (Extension Popup): Received response:', response);
               setIsCheckout(response?.isCheckout ?? false);
             }
             setLoading(false);
           }
         );
       } catch (error) {
-        console.error('Popup (Extension Popup): Error checking page:', error);
         setError('Error checking page status.');
         setIsCheckout(false);
         setLoading(false);
@@ -123,8 +114,32 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
     );
   }
 
+  // Refactored return to have a single parent div.popup
   return (
-    <div className="popup">
+    <div className="popup" style={{ position: 'relative' }}> {/* Added relative positioning for absolute child */}
+      {/* Dismiss Button - only shown in content script context */}
+      {isContentScriptContext && onDismiss && (
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          style={{
+            position: 'absolute',
+            top: '5px',
+            right: '5px',
+            background: 'transparent',
+            border: 'none',
+            fontSize: '16px',
+            lineHeight: '1',
+            cursor: 'pointer',
+            padding: '2px 5px',
+            color: '#666', // Adjust color as needed
+          }}
+        >
+          &times; {/* HTML entity for 'x' */}
+        </button>
+      )}
+
+      {/* Conditional content based on checkout status */}
       {isCheckout ? (
         <div className="checkout-detected">
           <h2>Checkout Detected!</h2>
@@ -141,7 +156,7 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
               maxLength={500}
               aria-label="AI prompt input"
             />
-            <button 
+            <button
               className="primary-button"
               onClick={handleAiSubmit}
               disabled={aiLoading || !prompt.trim()}
@@ -157,7 +172,7 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
               <div className="ai-response" role="region" aria-label="AI response">{aiResponse}</div>
             )}
           </div>
-          <button 
+          <button
             className="primary-button"
             onClick={() => {
               // TODO: Implement showing alternatives
@@ -171,6 +186,8 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
         <div className="no-checkout">
           <h2>Not a Checkout Page</h2>
           <p>Keep browsing and we'll notify you when you're ready to checkout!</p>
+          {/* Optionally show something different or nothing if not checkout in content script */}
+          {/* {isContentScriptContext && <p>(This message is from the content script)</p>} */}
         </div>
       )}
     </div>

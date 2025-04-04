@@ -33,6 +33,4 @@ if (isExtensionContext) {
       throw error;
     }
   }
-} else {
-  console.log('Running in development environment - background script not initialized');
 }

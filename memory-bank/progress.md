@@ -1,5 +1,8 @@
 ## Work Done
 
+- **Added Conditional Rendering & Dismiss for Content Script Popup:**
+  - Modified `src/content/content.tsx` to check `isCheckoutPage` before rendering, only injecting the Popup on checkout pages, and added dismiss logic.
+  - Modified `src/components/Popup.tsx` to accept an `onDismiss` prop and added a dismiss button visible only in the content script context.
 - **Updated Content Script to Render Full Popup:**
   - Modified `src/components/Popup.tsx` to handle content script context (added prop, imported `isCheckoutPage`, updated `useEffect` logic with `await`).
   - Modified `src/content/content.tsx` to use named import for `Popup` and pass `isContentScriptContext={true}` prop.
@@ -50,9 +53,12 @@
 
 ## Next Steps
 
-- **Test Content Script Popup Implementation:**
+- **Test Conditional Content Script Popup:**
   - Run `npm run build`.
-  - Manually load the unpacked extension (from `dist/`) into a browser and verify the full `Popup` component renders correctly within the content script context on various pages, correctly identifying checkout/non-checkout status using the direct check logic.
+  - Manually load the unpacked extension (from `dist/`) into a browser.
+  - Verify the `Popup` only appears on pages detected as checkout pages.
+  - Verify the `Popup` does *not* appear on non-checkout pages.
+  - Verify the dismiss ('x') button works correctly on checkout pages where the popup appears.
 - **Test Extension Functionality:** Manually load the unpacked extension (from `dist/`) into a browser and verify popup and background script interactions (in addition to the content script).
 - Enhance AI Features:
   - Implement response streaming for better UX
