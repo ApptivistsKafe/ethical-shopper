@@ -7,11 +7,15 @@ const isExtensionContext = (): boolean => {
 };
 
 // Direct API call implementation
-const generateDirectAIResponse = async (prompt: string): Promise<string> => {
+const generateDirectAIResponse = async (prompt: string, pageHtml?: string): Promise<string> => {
   const genAI = new GoogleGenerativeAI(config.GOOGLE_AI_API_KEY);
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
+    // Combine prompt and page HTML if provided
+    const fullPrompt = pageHtml
+      ? `User Prompt: ${prompt}\n\nPage HTML Content:\n\`\`\`html\n${pageHtml}\n\`\`\`\n\nPlease analyze the page content in relation to the user prompt.`
+      : prompt;
+    const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     return response.text();
   } catch (error) {
@@ -21,11 +25,12 @@ const generateDirectAIResponse = async (prompt: string): Promise<string> => {
 };
 
 // Extension message-based implementation
-const generateExtensionAIResponse = async (prompt: string): Promise<string> => {
+const generateExtensionAIResponse = async (prompt: string, pageHtml?: string): Promise<string> => {
   try {
     const response = await chrome.runtime.sendMessage({
       type: 'GENERATE_AI_RESPONSE',
-      prompt
+      prompt,
+      pageHtml // Pass the HTML content in the message
     });
 
     if (!response.success) {
@@ -40,13 +45,13 @@ const generateExtensionAIResponse = async (prompt: string): Promise<string> => {
 };
 
 // Main export that handles both environments
-export const generateAIResponse = async (prompt: string): Promise<string> => {
+export const generateAIResponse = async (prompt: string, pageHtml?: string): Promise<string> => {
   try {
     // Use extension implementation if in extension context, otherwise direct call
     if (isExtensionContext()) {
-      return await generateExtensionAIResponse(prompt);
+      return await generateExtensionAIResponse(prompt, pageHtml);
     } else {
-      return await generateDirectAIResponse(prompt);
+      return await generateDirectAIResponse(prompt, pageHtml);
     }
   } catch (error) {
     console.error('Error generating AI response:', error);

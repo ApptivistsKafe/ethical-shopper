@@ -1,9 +1,21 @@
 ## Current Session Context
 
-[Date and time of update: 2025-04-04 12:59 AM EDT]
+[Date and time of update: 2025-04-04 01:03 AM EDT]
 
 ## Recent Changes
 
+- **Passed Page HTML to AI Service:**
+  - Modified `src/components/Popup.tsx`:
+    - Updated `handleAiSubmit` to get `document.documentElement.outerHTML`.
+    - Passed the `pageHtml` as a second argument to `generateAIResponse`.
+  - Modified `src/services/aiService.ts`:
+    - Updated `generateAIResponse`, `generateExtensionAIResponse`, and `generateDirectAIResponse` function signatures to accept an optional `pageHtml` string argument.
+    - Updated `generateExtensionAIResponse` to include `pageHtml` in the message payload sent to the background script.
+    - Updated `generateDirectAIResponse` to prepend the `pageHtml` (if provided) to the prompt sent to the Google API, clearly separating it from the user's prompt.
+  - Modified `src/background/background.ts`:
+    - Updated the `GENERATE_AI_RESPONSE` message listener to extract `pageHtml` from the incoming message.
+    - Updated the internal `generateAIResponse` function signature to accept an optional `pageHtml` string argument.
+    - Updated the internal `generateAIResponse` function to prepend the `pageHtml` (if provided) to the prompt sent to the Google API.
 - **Added Conditional Rendering & Dismiss for Content Script Popup:**
   - Modified `src/content/content.tsx`:
     - Added `initialize` function to check `isCheckoutPage` before rendering.
@@ -42,14 +54,20 @@
 
 ## Current Goals
 
-- **Test Conditional Content Script Popup:** (Immediate Next Step)
+- **Test AI Integration with Page Context:** (Immediate Next Step)
+  - Run `npm run build`.
+  - Manually load the unpacked extension.
+  - Navigate to a checkout page.
+  - Use the AI prompt in the injected Popup.
+  - Verify (e.g., via network logs or debugging background script) that the page HTML is included in the API request to Gemini.
+  - Verify the AI response seems relevant to the page content.
+- **Test Conditional Content Script Popup:**
   - Run `npm run build`.
   - Manually load the unpacked extension.
   - Verify the `Popup` only appears on pages detected as checkout pages.
   - Verify the `Popup` does *not* appear on non-checkout pages.
   - Verify the dismiss ('x') button works correctly on checkout pages.
 - Test overall extension functionality (Popup, Background Script).
-- Test AI integration.
 - Enhance AI Features (Streaming, History, Formatting).
 - Cross-environment Testing.
 

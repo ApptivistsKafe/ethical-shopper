@@ -10,7 +10,9 @@ if (isExtensionContext) {
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'GENERATE_AI_RESPONSE') {
-      generateAIResponse(message.prompt)
+      // Extract prompt and pageHtml from the message
+      const { prompt, pageHtml } = message;
+      generateAIResponse(prompt, pageHtml) // Pass both to the internal function
         .then(response => {
           sendResponse({ success: true, data: response });
         })
@@ -22,10 +24,14 @@ if (isExtensionContext) {
     }
   });
 
-  async function generateAIResponse(prompt: string): Promise<string> {
+  async function generateAIResponse(prompt: string, pageHtml?: string): Promise<string> {
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      const result = await model.generateContent(prompt);
+      // Combine prompt and page HTML if provided
+      const fullPrompt = pageHtml
+        ? `User Prompt: ${prompt}\n\nPage HTML Content:\n\`\`\`html\n${pageHtml}\n\`\`\`\n\nPlease analyze the page content in relation to the user prompt.`
+        : prompt;
+      const result = await model.generateContent(fullPrompt);
       const response = await result.response;
       return response.text();
     } catch (error) {

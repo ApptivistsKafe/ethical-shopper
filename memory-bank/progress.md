@@ -1,5 +1,9 @@
 ## Work Done
 
+- **Passed Page HTML to AI Service:**
+  - Modified `src/components/Popup.tsx` to get page HTML and pass it to `generateAIResponse`.
+  - Modified `src/services/aiService.ts` to handle `pageHtml` argument in all relevant functions and message passing.
+  - Modified `src/background/background.ts` to receive `pageHtml` in message and include it in the API prompt.
 - **Added Conditional Rendering & Dismiss for Content Script Popup:**
   - Modified `src/content/content.tsx` to check `isCheckoutPage` before rendering, only injecting the Popup on checkout pages, and added dismiss logic.
   - Modified `src/components/Popup.tsx` to accept an `onDismiss` prop and added a dismiss button visible only in the content script context.
@@ -53,7 +57,14 @@
 
 ## Next Steps
 
-- **Test Conditional Content Script Popup:** (Immediate Next Step)
+- **Test AI Integration with Page Context:** (Immediate Next Step)
+  - Run `npm run build`.
+  - Manually load the unpacked extension (from `dist/`) into a browser.
+  - Navigate to a checkout page.
+  - Use the AI prompt in the injected Popup.
+  - Verify (e.g., via network logs or debugging background script) that the page HTML is included in the API request to Gemini.
+  - Verify the AI response seems relevant to the page content.
+- **Test Conditional Content Script Popup:**
   - Run `npm run build`.
   - Manually load the unpacked extension (from `dist/`) into a browser.
   - Verify the `Popup` only appears on pages detected as checkout pages.

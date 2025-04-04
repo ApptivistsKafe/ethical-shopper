@@ -91,7 +91,9 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
     
     setAiLoading(true);
     try {
-      const response = await generateAIResponse(prompt);
+      // Get the current page's HTML content
+      const pageHtml = document.documentElement.outerHTML;
+      const response = await generateAIResponse(prompt, pageHtml);
       setAiResponse(response);
       setError(null);
     } catch (error) {
