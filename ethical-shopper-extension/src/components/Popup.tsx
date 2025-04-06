@@ -15,6 +15,20 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false); // State for pause toggle
+
+  // Effect to load initial pause state (only in popup context)
+  useEffect(() => {
+    if (!isContentScriptContext && typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.get(['extensionPaused'], (result) => {
+        if (chrome.runtime.lastError) {
+          console.error('Error getting pause state:', chrome.runtime.lastError);
+        } else {
+          setIsPaused(!!result.extensionPaused); // Default to false if not set
+        }
+      });
+    }
+  }, [isContentScriptContext]);
 
   useEffect(() => {
     const checkCurrentPage = async () => {
@@ -108,6 +122,28 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) handleAiSubmit();
   };
+
+  // Handler for the pause toggle
+  const handlePauseToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newPauseState = event.target.checked;
+    setIsPaused(newPauseState);
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      // Send message to background to update storage
+      chrome.runtime.sendMessage({ type: 'SET_PAUSE_STATE', paused: newPauseState }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Error setting pause state:', chrome.runtime.lastError.message);
+          // Optionally revert UI state or show error
+        } else if (!response?.success) {
+          console.error('Background script failed to set pause state.');
+          // Optionally revert UI state or show error
+        } else {
+          console.log('Pause state updated successfully.');
+        }
+      });
+    } else {
+      console.warn('Cannot send pause state message: Chrome runtime not available.');
+    }
+  };
   if (loading) {
     return (
       <div className="popup">
@@ -139,6 +175,22 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
         >
           &times; {/* HTML entity for 'x' */}
         </button>
+      )}
+
+      {/* Pause Toggle - only shown in popup context */}
+      {!isContentScriptContext && (
+        <div className="pause-toggle" style={{ paddingBottom: '10px', borderBottom: '1px solid #eee', marginBottom: '10px' }}>
+          <label htmlFor="pause-switch" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              id="pause-switch"
+              checked={isPaused}
+              onChange={handlePauseToggle}
+              style={{ marginRight: '8px' }}
+            />
+            <span>{isPaused ? 'Extension Paused' : 'Extension Active'}</span>
+          </label>
+        </div>
       )}
 
       {/* Conditional content based on checkout status */}

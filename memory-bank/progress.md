@@ -1,5 +1,9 @@
 ## Work Done
 
+- **Added Global Pause/Unpause Feature:**
+  - Modified `src/components/Popup.tsx` to include state, effect, handler, and UI for the toggle (popup context only).
+  - Modified `src/background/background.ts` to handle `SET_PAUSE_STATE` messages and update `chrome.storage.local`.
+  - Modified `src/content/content.tsx` to check `extensionPaused` state from storage before initialization and added `/// <reference types="chrome" />`.
 - **Passed Page HTML to AI Service:**
   - Modified `src/components/Popup.tsx` to get page HTML and pass it to `generateAIResponse`.
   - Modified `src/services/aiService.ts` to handle `pageHtml` argument in all relevant functions and message passing.
@@ -57,7 +61,14 @@
 
 ## Next Steps
 
-- **Test AI Integration with Page Context:** (Immediate Next Step)
+- **Test Global Pause/Unpause Feature:** (Immediate Next Step)
+  - Run `npm run build`.
+  - Manually load the unpacked extension (from `dist/`) into a browser.
+  - Open the extension popup and toggle the pause switch. Verify the state persists after closing/reopening the popup.
+  - With the extension paused, navigate to a checkout page and verify the content script popup does *not* appear.
+  - Unpause the extension via the popup.
+  - Navigate to a checkout page (or refresh) and verify the content script popup *does* appear.
+- **Test AI Integration with Page Context:**
   - Run `npm run build`.
   - Manually load the unpacked extension (from `dist/`) into a browser.
   - Navigate to a checkout page.

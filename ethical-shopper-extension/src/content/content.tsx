@@ -1,3 +1,5 @@
+/// <reference types="chrome" />
+
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
 import { Popup } from '../components/Popup'; // Import the main Popup component
@@ -45,8 +47,36 @@ const dismissPopup = () => {
   console.log('Ethical Shopper content script dismissed Popup component.');
 };
 
-// Check if it's a checkout page before injecting
+// Check pause state and then if it's a checkout page before injecting
 const initialize = async () => {
+  // Check if the extension is paused first
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    try {
+      const result = await new Promise<{ extensionPaused?: boolean }>((resolve, reject) => {
+        chrome.storage.local.get(['extensionPaused'], (res) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(res);
+          }
+        });
+      });
+
+      if (result.extensionPaused) {
+        console.log('Ethical Shopper: Extension is paused, content script inactive.');
+        // Ensure any existing popup is removed if the extension was just paused
+        dismissPopup();
+        return; // Stop execution if paused
+      }
+    } catch (error) {
+      console.error('Ethical Shopper: Error getting pause state:', error);
+      // Decide if we should proceed or stop if state is unknown. Let's proceed for now.
+    }
+  } else {
+    console.warn('Ethical Shopper: Cannot check pause state - chrome.storage.local not available.');
+  }
+
+  // If not paused, proceed with checkout check
   try {
     const isCheckout = await isCheckoutPage(window.location.href, document);
     if (isCheckout) {

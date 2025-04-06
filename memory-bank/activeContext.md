@@ -1,9 +1,22 @@
 ## Current Session Context
 
-[Date and time of update: 2025-04-04 01:03 AM EDT]
+[Date and time of update: 2025-04-04 02:45 PM EDT]
 
 ## Recent Changes
 
+- **Added Global Pause/Unpause Feature:**
+  - Modified `src/components/Popup.tsx`:
+    - Added state (`isPaused`) to manage the toggle.
+    - Added `useEffect` hook to load initial pause state from `chrome.storage.local` (only in popup context).
+    - Added a toggle switch UI element (only visible in popup context).
+    - Added `handlePauseToggle` function to update state and send `SET_PAUSE_STATE` message to background script.
+  - Modified `src/background/background.ts`:
+    - Added a message listener for `SET_PAUSE_STATE`.
+    - The listener updates the `extensionPaused` value in `chrome.storage.local`.
+  - Modified `src/content/content.tsx`:
+    - Added `/// <reference types="chrome" />` directive to resolve TypeScript errors.
+    - Updated `initialize` function to first check `extensionPaused` state from `chrome.storage.local`.
+    - If paused, the content script logs a message and stops execution, ensuring the popup isn't injected.
 - **Passed Page HTML to AI Service:**
   - Modified `src/components/Popup.tsx`:
     - Updated `handleAiSubmit` to get `document.documentElement.outerHTML`.
@@ -54,7 +67,14 @@
 
 ## Current Goals
 
-- **Test AI Integration with Page Context:** (Immediate Next Step)
+- **Test Global Pause/Unpause Feature:** (Immediate Next Step)
+  - Run `npm run build`.
+  - Manually load the unpacked extension.
+  - Open the extension popup and toggle the pause switch. Verify the state persists after closing/reopening the popup.
+  - With the extension paused, navigate to a checkout page and verify the content script popup does *not* appear.
+  - Unpause the extension via the popup.
+  - Navigate to a checkout page (or refresh) and verify the content script popup *does* appear.
+- **Test AI Integration with Page Context:**
   - Run `npm run build`.
   - Manually load the unpacked extension.
   - Navigate to a checkout page.

@@ -21,7 +21,19 @@ if (isExtensionContext) {
           sendResponse({ success: false, error: error.message });
         });
       return true; // Will respond asynchronously
+    } else if (message.type === 'SET_PAUSE_STATE') {
+      const newPauseState = message.paused;
+      chrome.storage.local.set({ extensionPaused: newPauseState }, () => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          sendResponse({ success: true });
+        }
+      });
+      return true; // Will respond asynchronously
     }
+    // Handle other message types if needed, or return false if not handled
+    // return false; // Uncomment if you need to indicate synchronous handling for other types
   });
 
   async function generateAIResponse(prompt: string, pageHtml?: string): Promise<string> {
