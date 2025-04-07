@@ -10,9 +10,9 @@ if (isExtensionContext) {
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'GENERATE_AI_RESPONSE') {
-      // Extract prompt and pageHtml from the message
-      const { prompt, pageHtml } = message;
-      generateAIResponse(prompt, pageHtml) // Pass both to the internal function
+      // Extract prompt and pageMarkdown from the message
+      const { prompt, pageMarkdown } = message; // Expect pageMarkdown now
+      generateAIResponse(prompt, pageMarkdown) // Pass Markdown to the internal function
         .then(response => {
           sendResponse({ success: true, data: response });
         })
@@ -36,12 +36,13 @@ if (isExtensionContext) {
     // return false; // Uncomment if you need to indicate synchronous handling for other types
   });
 
-  async function generateAIResponse(prompt: string, pageHtml?: string): Promise<string> {
+  async function generateAIResponse(prompt: string, pageMarkdown?: string): Promise<string> { // Parameter renamed
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
       // Combine prompt and page HTML if provided
-      const fullPrompt = pageHtml
-        ? `User Prompt: ${prompt}\n\nPage HTML Content:\n\`\`\`html\n${pageHtml}\n\`\`\`\n\nPlease analyze the page content in relation to the user prompt.`
+      // Combine prompt and page Markdown if provided
+      const fullPrompt = pageMarkdown
+        ? `User Prompt: ${prompt}\n\nPage Content (Markdown):\n\`\`\`markdown\n${pageMarkdown}\n\`\`\`\n\nPlease analyze the page content in relation to the user prompt.`
         : prompt;
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;

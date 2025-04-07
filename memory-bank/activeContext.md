@@ -4,6 +4,18 @@
 
 ## Recent Changes
 
+- **Optimized AI Context with HTML Minification & Markdown Conversion:**
+  - Installed `turndown` library (`npm install turndown @types/turndown`).
+  - Modified `src/services/aiService.ts`:
+    - Added `processHtmlForAI` helper function to:
+      - Parse HTML using `DOMParser`.
+      - Remove unwanted tags (`script`, `style`, `link`, `meta`, `noscript`, `svg`, `img`, `header`, `footer`, `nav`) and comments.
+      - Convert the cleaned HTML body/document to Markdown using `TurndownService`.
+      - Perform basic Markdown cleanup (remove excessive newlines).
+    - Updated `generateDirectAIResponse` and `generateExtensionAIResponse` to call `processHtmlForAI` on the input `pageHtml` and send the resulting `pageMarkdown` to the AI/background script.
+  - Modified `src/background/background.ts`:
+    - Updated the `GENERATE_AI_RESPONSE` message listener to expect `pageMarkdown` instead of `pageHtml`.
+    - Updated the internal `generateAIResponse` function to accept `pageMarkdown` and use it in the prompt sent to the Gemini API.
 - **Added Global Pause/Unpause Feature:**
   - Modified `src/components/Popup.tsx`:
     - Added state (`isPaused`) to manage the toggle.

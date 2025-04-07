@@ -207,7 +207,6 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
               className="ai-input"
               disabled={aiLoading}
               rows={3}
-              maxLength={500}
               aria-label="AI prompt input"
             />
             <button

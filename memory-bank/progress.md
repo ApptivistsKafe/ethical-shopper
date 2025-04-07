@@ -1,5 +1,9 @@
 ## Work Done
 
+- **Optimized AI Context with HTML Minification & Markdown Conversion:**
+  - Installed `turndown` library.
+  - Modified `src/services/aiService.ts` to add `processHtmlForAI` helper (HTML cleaning + Markdown conversion) and updated AI call functions to use it.
+  - Modified `src/background/background.ts` to handle `pageMarkdown` instead of `pageHtml` in messages and API calls.
 - **Added Global Pause/Unpause Feature:**
   - Modified `src/components/Popup.tsx` to include state, effect, handler, and UI for the toggle (popup context only).
   - Modified `src/background/background.ts` to handle `SET_PAUSE_STATE` messages and update `chrome.storage.local`.
@@ -73,7 +77,7 @@
   - Manually load the unpacked extension (from `dist/`) into a browser.
   - Navigate to a checkout page.
   - Use the AI prompt in the injected Popup.
-  - Verify (e.g., via network logs or debugging background script) that the page HTML is included in the API request to Gemini.
+  - Verify (e.g., via network logs or debugging background script) that the processed page **Markdown** (not raw HTML) is included in the API request to Gemini.
   - Verify the AI response seems relevant to the page content.
 - **Test Conditional Content Script Popup:**
   - Run `npm run build`.
