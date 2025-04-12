@@ -1,6 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { generateAIResponse } from '../services/aiService';
 import { isCheckoutPage } from '../services/checkoutDetector'; // Import the detector
+import { alternativesPrompt } from '../constants/prompts'; // Import the alternatives prompt
+
+// Define interfaces for the expected AI response structure
+interface AlternativeProducts {
+  name: string;
+  thumbnail: string; // URL of the product image
+  company: string; // Selling site
+  brand: string;
+  price: string;
+  ethicalStatus: string; // Description of ethics
+  ethicalAlternatives?: CompanyAlternative[]; // More ethical companies
+  comparableProducts?: EthicalProduct[]; // Specific product alternatives
+  purchaseLink?: string; // Added for comparable products
+}
+
+interface CompanyAlternative {
+  name: string;
+  logoThumbnail: string; // URL of the company logo
+  reasoning: string; // Why they are considered more ethical
+}
+
+interface EthicalProduct {
+  name: string;
+  thumbnail: string; // URL of the product image
+  company: string;
+  brand: string;
+  price: string;
+  purchaseLink: string;
+}
+
 
 interface PopupProps {
   isCheckoutForTesting?: boolean;
@@ -14,8 +44,12 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   const [prompt, setPrompt] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false); // For the generic AI prompt
   const [isPaused, setIsPaused] = useState<boolean>(false); // State for pause toggle
+  const [showAlternatives, setShowAlternatives] = useState(false); // Control visibility of alternatives section
+  const [alternativesLoading, setAlternativesLoading] = useState(false); // Loading state for alternatives
+  const [alternativesData, setAlternativesData] = useState<AlternativeProducts[] | null>(null); // Store parsed alternatives
+  const [alternativesError, setAlternativesError] = useState<string | null>(null); // Error state for alternatives fetch
 
   // Effect to load initial pause state (only in popup context)
   useEffect(() => {
@@ -144,6 +178,73 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
       console.warn('Cannot send pause state message: Chrome runtime not available.');
     }
   };
+
+  // Handler for the "Show Alternatives" button
+  const handleShowAlternativesClick = async () => {
+    setShowAlternatives(true); // Show the alternatives section immediately
+    setAlternativesLoading(true);
+    setAlternativesData(null);
+    setAlternativesError(null);
+    setAiResponse(null); // Clear generic AI response if shown
+
+    try {
+      const pageHtml = document.documentElement.outerHTML;
+      // Use the specific alternativesPrompt
+      const rawResponse = await generateAIResponse(alternativesPrompt, pageHtml);
+
+      if (!rawResponse) {
+        throw new Error('Received empty response from AI.');
+      }
+
+      // Attempt to parse the JSON response
+      try {
+        // Find the start and end of the JSON array/object
+        const jsonStart = rawResponse.indexOf('[');
+        const jsonEnd = rawResponse.lastIndexOf(']');
+        let jsonData: AlternativeProducts[];
+
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+          const jsonString = rawResponse.substring(jsonStart, jsonEnd + 1);
+          jsonData = JSON.parse(jsonString);
+           // Basic validation (check if it's an array)
+          if (!Array.isArray(jsonData)) {
+            throw new Error('AI response is not a valid JSON array.');
+          }
+          setAlternativesData(jsonData);
+        } else {
+           // Handle cases where the response might be a single object or malformed
+           // Try parsing as an object if array markers aren't found
+           const objectStart = rawResponse.indexOf('{');
+           const objectEnd = rawResponse.lastIndexOf('}');
+           if (objectStart !== -1 && objectEnd !== -1) {
+               const jsonString = rawResponse.substring(objectStart, objectEnd + 1);
+               const singleProduct = JSON.parse(jsonString);
+               // Wrap single object in an array if needed, or handle appropriately
+               // For now, assume the prompt *should* return an array as requested.
+               // If it's consistently an object, the prompt/type needs adjustment.
+               console.warn("AI returned a single object, expected array. Wrapping.");
+               setAlternativesData([singleProduct]); // Example: wrap it
+           } else {
+               throw new Error('Could not find valid JSON array or object markers in the AI response.');
+           }
+        }
+
+
+      } catch (parseError) {
+        console.error('Error parsing AI JSON response:', parseError, 'Raw response:', rawResponse);
+        throw new Error('Failed to parse ethical alternatives data from AI.');
+      }
+
+    } catch (error: any) {
+      console.error('Error fetching alternatives:', error);
+      setAlternativesError(error.message || 'Failed to fetch ethical alternatives. Please try again.');
+      setAlternativesData(null); // Ensure data is null on error
+    } finally {
+      setAlternativesLoading(false);
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="popup">
@@ -197,43 +298,111 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
       {isCheckout ? (
         <div className="checkout-detected">
           <h2>Checkout Detected!</h2>
-          <p>Would you like to see ethical alternatives?</p>
-          <div className="ai-section">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask about ethical alternatives..."
-              className="ai-input"
-              disabled={aiLoading}
-              rows={3}
-              aria-label="AI prompt input"
-            />
-            <button
-              className="primary-button"
-              onClick={handleAiSubmit}
-              disabled={aiLoading || !prompt.trim()}
-            >
-              {aiLoading ? 'Thinking...' : 'Ask AI'}
-            </button>
-            {error && (
-              <div className="error-message">
-                {error}
+
+          {/* Hide generic AI prompt when alternatives are shown/loading */}
+          {!showAlternatives && (
+            <>
+              <p>Ask our AI about this product or company:</p>
+              <div className="ai-section">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="e.g., Is this company ethical?"
+                  className="ai-input"
+                  disabled={aiLoading}
+                  rows={3}
+                  aria-label="AI prompt input"
+                />
+                <button
+                  className="secondary-button" // Changed style
+                  onClick={handleAiSubmit}
+                  disabled={aiLoading || !prompt.trim()}
+                >
+                  {aiLoading ? 'Thinking...' : 'Ask AI'}
+                </button>
+                {error && (
+                  <div className="error-message">
+                    {error}
+                  </div>
+                )}
+                {aiResponse && (
+                  <div className="ai-response" role="region" aria-label="AI response">{aiResponse}</div>
+                )}
               </div>
-            )}
-            {aiResponse && (
-              <div className="ai-response" role="region" aria-label="AI response">{aiResponse}</div>
-            )}
-          </div>
-          <button
-            className="primary-button"
-            onClick={() => {
-              // TODO: Implement showing alternatives
-              console.log('Show alternatives clicked');
-            }}
-          >
-            Show Alternatives
-          </button>
+              <hr className="separator" />
+              <p>Or, let us find ethical alternatives for you:</p>
+            </>
+          )}
+
+          {/* Show Alternatives Button - always visible if checkout detected, unless loading alternatives */}
+           {!alternativesLoading && (
+             <button
+               className="primary-button show-alternatives-button"
+               onClick={handleShowAlternativesClick}
+               disabled={alternativesLoading} // Disable while loading alternatives
+             >
+               {showAlternatives ? 'Refresh Alternatives' : 'Show Ethical Alternatives'}
+             </button>
+           )}
+
+
+          {/* Alternatives Section */}
+          {showAlternatives && (
+            <div className="alternatives-section">
+              {alternativesLoading && (
+                <div className="spinner">Loading alternatives...</div> // Simple spinner text for now
+              )}
+              {alternativesError && (
+                <div className="error-message">{alternativesError}</div>
+              )}
+              {alternativesData && !alternativesLoading && (
+                <div className="alternatives-results">
+                  <h3>Ethical Analysis & Alternatives</h3>
+                  {alternativesData.length === 0 && <p>No specific products identified on this page for analysis.</p>}
+                  {alternativesData.map((product, index) => (
+                    <div key={index} className="original-product-analysis">
+                      <h4>Original Product: {product.name || 'Unknown Product'}</h4>
+                      <p><strong>Brand:</strong> {product.brand || 'N/A'}</p>
+                      <p><strong>Sold By:</strong> {product.company || 'N/A'}</p>
+                      <p><strong>Price:</strong> {product.price || 'N/A'}</p>
+                      <p><strong>Ethical Status:</strong> {product.ethicalStatus || 'No information available.'}</p>
+
+                      {product.comparableProducts && product.comparableProducts.length > 0 && (
+                        <div className="ethical-alternatives-list">
+                          <h5>Suggested Ethical Alternatives:</h5>
+                          {product.comparableProducts.map((alt, altIndex) => (
+                            // Make the entire div a clickable link if purchaseLink exists
+                            <a
+                              key={altIndex}
+                              href={alt.purchaseLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="alternative-product-link" // New class for styling the link block
+                            >
+                              <div className="alternative-product"> {/* Keep inner div for structure */}
+                                {alt.thumbnail && (
+                                  <img src={alt.thumbnail} alt={alt.name} className="alternative-thumbnail" />
+                                )}
+                                <div className="alternative-details">
+                                  <p><strong>{alt.name}</strong></p>
+                                  <p>Brand: {alt.brand}, Sold By: {alt.company}</p>
+                                  <p>Price: {alt.price}</p>
+                                </div>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                       {!product.comparableProducts || product.comparableProducts.length === 0 && (
+                         <p><em>No specific alternative products found.</em></p>
+                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="no-checkout">

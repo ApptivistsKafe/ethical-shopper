@@ -1,9 +1,43 @@
 ## Current Session Context
 
-[Date and time of update: 2025-04-04 02:45 PM EDT]
+[Date and time of update: 2025-04-07 12:28 AM EDT]
 
 ## Recent Changes
 
+- **Refined "Show Alternatives" Feature Display:**
+  - Modified `src/components/Popup.tsx`:
+    - Updated rendering logic within `ethical-alternatives-list` to:
+      - Display product thumbnail (`alt.thumbnail`) using an `<img>` tag (`.alternative-thumbnail`).
+      - Wrap the entire alternative product entry (`.alternative-product`) in an `<a>` tag (`.alternative-product-link`) using `alt.purchaseLink` as the `href`.
+      - Removed the separate "View Product" button (`.purchase-link`).
+  - Modified `src/styles.scss`:
+    - Added styles for `.alternative-product-link` to make it a clickable block with hover effects.
+    - Updated `.alternative-product` styles to use flexbox for layout with the thumbnail (`.alternative-thumbnail`) and details (`.alternative-details`).
+    - Added styles for `.alternative-thumbnail` (size, object-fit, margin).
+    - Adjusted styles within `.alternative-details`.
+    - Removed the unused `.purchase-link` style.
+- **Implemented "Show Alternatives" Feature (Initial):**
+  - Modified `src/components/Popup.tsx`:
+    - Added state variables (`showAlternatives`, `alternativesLoading`, `alternativesData`, `alternativesError`).
+    - Defined TypeScript interfaces (`AlternativeProduct`, `CompanyAlternative`, `EthicalProduct`) for the expected AI response structure based on `alternativesPrompt` (interfaces already included thumbnail).
+    - Imported `alternativesPrompt` from `src/constants/prompts.ts`.
+    - Created `handleShowAlternativesClick` async function:
+      - Sets loading state.
+      - Calls `generateAIResponse` with `alternativesPrompt` and page HTML.
+      - Parses the expected JSON array from the AI response (with basic validation and fallback for single object).
+      - Updates `alternativesData` or `alternativesError` state.
+      - Clears loading state.
+    - Updated the "Show Alternatives" button's `onClick` to call `handleShowAlternativesClick`.
+    - Added conditional rendering logic:
+      - Shows a loading indicator (`.spinner`) while fetching alternatives.
+      - Displays errors using `.error-message`.
+      - Renders the `alternativesData` in a structured format (`.alternatives-results`, `.original-product-analysis`, `.ethical-alternatives-list`, `.alternative-product`).
+      - Hides the generic AI prompt section when alternatives are shown or loading.
+      - Changed generic "Ask AI" button style to `.secondary-button`.
+  - Modified `src/styles.scss`:
+    - Added initial styles for `.alternatives-section`, `.spinner`, `.alternatives-results`, `.original-product-analysis`, `.ethical-alternatives-list`, `.alternative-product`.
+    - Added styles for `.secondary-button` and `.separator`.
+    - Added `max-width`, `max-height`, `overflow-y`, `box-shadow`, and `border-radius` to the main `.popup` class for better presentation.
 - **Optimized AI Context with HTML Minification & Markdown Conversion:**
   - Installed `turndown` library (`npm install turndown @types/turndown`).
   - Modified `src/services/aiService.ts`:
@@ -79,7 +113,19 @@
 
 ## Current Goals
 
-- **Test Global Pause/Unpause Feature:** (Immediate Next Step)
+- **Test "Show Alternatives" Feature:** (Immediate Next Step)
+  - Run `npm run build`.
+  - Manually load the unpacked extension.
+  - Navigate to a checkout page.
+  - Click the "Show Ethical Alternatives" button.
+  - Verify the loading spinner appears.
+  - Verify the AI response is fetched using `alternativesPrompt`.
+  - Verify the response is parsed correctly and displayed in the new structured format (including thumbnail).
+  - Verify the entire alternative product entry is clickable and links correctly.
+  - Verify hover effects on the clickable entry.
+  - Test error handling (e.g., invalid JSON response, network error, missing thumbnail).
+  - Test the "Refresh Alternatives" functionality.
+- **Test Global Pause/Unpause Feature:**
   - Run `npm run build`.
   - Manually load the unpacked extension.
   - Open the extension popup and toggle the pause switch. Verify the state persists after closing/reopening the popup.
@@ -90,8 +136,8 @@
   - Run `npm run build`.
   - Manually load the unpacked extension.
   - Navigate to a checkout page.
-  - Use the AI prompt in the injected Popup.
-  - Verify (e.g., via network logs or debugging background script) that the page HTML is included in the API request to Gemini.
+  - Use the *generic* AI prompt in the injected Popup (before clicking "Show Alternatives").
+  - Verify (e.g., via network logs or debugging background script) that the page **Markdown** is included in the API request to Gemini.
   - Verify the AI response seems relevant to the page content.
 - **Test Conditional Content Script Popup:**
   - Run `npm run build`.
@@ -105,9 +151,10 @@
 
 ## Open Questions
 
-- Should we implement streaming responses for better UX?
+- Should we implement streaming responses for better UX (especially for alternatives)?
 - Do we need to implement rate limiting for API calls?
 - Should we add a conversation history feature?
-- How can we improve the AI response formatting?
+- How can we improve the AI response formatting (both generic and alternatives)?
 - Are there any specific Webpack optimizations needed for extension performance?
 - How should SPA navigation be handled robustly for content script re-evaluation? (Current basic listeners commented out)
+- How robust is the JSON parsing for the alternatives response? Should we add more sophisticated validation?

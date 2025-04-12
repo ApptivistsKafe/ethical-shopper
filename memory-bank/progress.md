@@ -1,5 +1,9 @@
 ## Work Done
 
+- **Implemented "Show Alternatives" Feature (with Refinements):**
+  - Modified `src/components/Popup.tsx` to add state, interfaces, handler (`handleShowAlternativesClick`), and conditional rendering logic for fetching and displaying ethical alternatives using `alternativesPrompt`.
+  - Modified `src/styles.scss` to add styles for the alternatives section, loading spinner, product display, popup constraints, and related UI elements.
+  - **Refined Display:** Updated `Popup.tsx` rendering and `styles.scss` to display product thumbnails, make the entire alternative product entry a clickable link (removing the separate button), and adjusted layout using flexbox.
 - **Optimized AI Context with HTML Minification & Markdown Conversion:**
   - Installed `turndown` library.
   - Modified `src/services/aiService.ts` to add `processHtmlForAI` helper (HTML cleaning + Markdown conversion) and updated AI call functions to use it.
@@ -65,7 +69,19 @@
 
 ## Next Steps
 
-- **Test Global Pause/Unpause Feature:** (Immediate Next Step)
+- **Test "Show Alternatives" Feature:** (Immediate Next Step)
+  - Run `npm run build`.
+  - Manually load the unpacked extension (from `dist/`) into a browser.
+  - Navigate to a checkout page.
+  - Click the "Show Ethical Alternatives" button.
+  - Verify the loading spinner appears.
+  - Verify the AI response is fetched using `alternativesPrompt`.
+  - Verify the response is parsed correctly and displayed in the new structured format (including thumbnail).
+  - Verify the entire alternative product entry is clickable and links correctly.
+  - Verify hover effects on the clickable entry.
+  - Test error handling (e.g., invalid JSON response, network error, missing thumbnail).
+  - Test the "Refresh Alternatives" functionality.
+- **Test Global Pause/Unpause Feature:**
   - Run `npm run build`.
   - Manually load the unpacked extension (from `dist/`) into a browser.
   - Open the extension popup and toggle the pause switch. Verify the state persists after closing/reopening the popup.
@@ -76,7 +92,7 @@
   - Run `npm run build`.
   - Manually load the unpacked extension (from `dist/`) into a browser.
   - Navigate to a checkout page.
-  - Use the AI prompt in the injected Popup.
+  - Use the *generic* AI prompt in the injected Popup (before clicking "Show Alternatives").
   - Verify (e.g., via network logs or debugging background script) that the processed page **Markdown** (not raw HTML) is included in the API request to Gemini.
   - Verify the AI response seems relevant to the page content.
 - **Test Conditional Content Script Popup:**
@@ -89,7 +105,7 @@
 - Enhance AI Features:
   - Implement response streaming for better UX
   - Add conversation history support
-  - Improve response formatting
+  - Improve response formatting (both generic and alternatives)
   - Add rate limiting for API calls
   - Create AI response templates
 - Test AI Integration:
@@ -114,7 +130,7 @@
   - Add test result history
 - Implement core extension features:
   - Refine checkout page detection
-  - Add ethical alternative suggestions
+  - Add ethical alternative suggestions (UI part done, logic needs refinement/testing)
   - Enhance user interface interactions
 - Cross-browser development:
   - Create browser-specific build configurations (using Webpack)
@@ -124,7 +140,7 @@
   - Add browser compatibility notes
   - Document Webpack build process for each browser
   - Create deployment guides for different stores
-  - Add AI integration documentation
+  - Add AI integration documentation (including alternatives feature)
   - Document environment setup process
 - Set up continuous integration workflow:
   - Add multi-browser testing pipeline
