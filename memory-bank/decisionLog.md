@@ -137,3 +137,38 @@
   - Corrected `ReactDOM` import syntax in `.tsx` files.
 - Successfully tested `npm run build` and `npm run dev`.
 - Updated Memory Bank files (`activeContext.md`, `progress.md`, `decisionLog.md`, `systemPatterns.md`) to reflect the change and troubleshooting.
+
+
+### [2025-04-12] - Refactor AI Interaction to Two-Step Process with Model Selection
+**Context:** The initial AI integration performed product identification and ethical alternative suggestion in a single, complex prompt. There was a need for more granular control, the ability to use different AI models for different tasks (potentially optimizing cost/performance), and better user feedback regarding execution time and cost.
+
+**Decision:** Refactor the AI interaction into a distinct two-step process within the popup:
+1.  **Step 1: Product Identification:** Use a dedicated prompt (`productIdentificationPrompt`) and a user-selectable model (`gemini-flash-2.0`) to identify the product details from the page markdown.
+2.  **Step 2: Ethical Alternatives:** Use a second dedicated prompt (`ethicalAlternativesPrompt`), the output JSON from Step 1, and a user-selectable model (`openai-gpt-o3-mini`, `gemini-flash-2.0-grounded`) to perform ethical analysis and find alternatives.
+- Implement UI changes in `Popup.tsx` to include dropdowns for model selection for each step (with allowed models), buttons to trigger each step sequentially, and display areas for results and execution time for each step.
+- Refactor `aiService.ts` to handle the new two-step flow, model parameters, and structured responses (`AIResponse` type including data and time).
+- Refactor `background.ts` to handle new message types (`CALL_AI_MODEL`), route requests to different API clients (Gemini, OpenAI) based on selected model, manage API keys, perform timing, remove safety settings, and return the structured `AIResponse` (without cost).
+- Update `config.ts` to include necessary API keys (e.g., `OPENAI_API_KEY`).
+- Update prompts in `constants/prompts.ts`.
+- Add necessary styles in `styles.scss`.
+
+**Rationale:**
+- Provides clearer separation of concerns between product identification and ethical analysis.
+- Allows users to choose different models for Step 2 based on potential capability or preference (e.g., OpenAI vs. Gemini Grounded).
+- Enables providing users with feedback on execution time per step.
+- Creates a more modular and extensible architecture for future AI feature additions or model integrations.
+- Step 2 only runs if Step 1 is successful and the user chooses to proceed, potentially saving unnecessary API calls.
+
+**Implementation:**
+- Split prompts into `productIdentificationPrompt` and `ethicalAlternativesPrompt`.
+- Installed `openai` npm package.
+- Refactored `aiService.ts` (`callAIModel`, simplified types, removed cost fields).
+- Refactored `background.ts` (`handleAICall`, API client initialization, routing for allowed models, timing, removed safety settings and cost logic/fields, removed logic for extra models). Specifically for `openai-gpt-o3-mini`, switched from `openai.chat.completions.create` to `openai.responses.create` using the `web_search_preview_2025_03_11` tool and updated response handling to correctly parse the nested structure (`output` -> `message` -> `content` -> `output_text`) returned by the API.
+- Updated `config.ts` for `OPENAI_API_KEY`.
+- Overhauled `Popup.tsx` state, UI (dropdowns with simplified allowed models, buttons, display areas for results/time), and handlers (`handleRunStepOne`, `handleRunStepTwo`). Removed cost state/display. Moved HTML processing to `handleRunStepOne`.
+- Added corresponding styles in `styles.scss`.
+
+**Considerations:**
+- OpenAI web search for `openai-gpt-o3-mini` is now implemented using `openai.responses.create` and the `web_search_preview_2025_03_11` tool. Gemini grounding still requires implementation.
+- Secure management of multiple API keys is crucial (currently relies on `.env` via Webpack for development).
+- Error handling for specific model failures or API issues needs refinement.

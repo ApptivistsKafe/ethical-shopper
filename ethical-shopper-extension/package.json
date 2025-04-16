@@ -12,6 +12,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "@types/turndown": "^5.0.5",
+    "openai": "^4.94.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "turndown": "^7.2.0",

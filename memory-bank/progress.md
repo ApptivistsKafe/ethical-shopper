@@ -1,149 +1,93 @@
 ## Work Done
-
-- **Implemented "Show Alternatives" Feature (with Refinements):**
-  - Modified `src/components/Popup.tsx` to add state, interfaces, handler (`handleShowAlternativesClick`), and conditional rendering logic for fetching and displaying ethical alternatives using `alternativesPrompt`.
-  - Modified `src/styles.scss` to add styles for the alternatives section, loading spinner, product display, popup constraints, and related UI elements.
-  - **Refined Display:** Updated `Popup.tsx` rendering and `styles.scss` to display product thumbnails, make the entire alternative product entry a clickable link (removing the separate button), and adjusted layout using flexbox.
-- **Optimized AI Context with HTML Minification & Markdown Conversion:**
-  - Installed `turndown` library.
-  - Modified `src/services/aiService.ts` to add `processHtmlForAI` helper (HTML cleaning + Markdown conversion) and updated AI call functions to use it.
-  - Modified `src/background/background.ts` to handle `pageMarkdown` instead of `pageHtml` in messages and API calls.
-- **Added Global Pause/Unpause Feature:**
-  - Modified `src/components/Popup.tsx` to include state, effect, handler, and UI for the toggle (popup context only).
-  - Modified `src/background/background.ts` to handle `SET_PAUSE_STATE` messages and update `chrome.storage.local`.
-  - Modified `src/content/content.tsx` to check `extensionPaused` state from storage before initialization and added `/// <reference types="chrome" />`.
-- **Passed Page HTML to AI Service:**
-  - Modified `src/components/Popup.tsx` to get page HTML and pass it to `generateAIResponse`.
-  - Modified `src/services/aiService.ts` to handle `pageHtml` argument in all relevant functions and message passing.
-  - Modified `src/background/background.ts` to receive `pageHtml` in message and include it in the API prompt.
-- **Added Conditional Rendering & Dismiss for Content Script Popup:**
-  - Modified `src/content/content.tsx` to check `isCheckoutPage` before rendering, only injecting the Popup on checkout pages, and added dismiss logic.
-  - Modified `src/components/Popup.tsx` to accept an `onDismiss` prop and added a dismiss button visible only in the content script context.
-- **Updated Content Script to Render Full Popup:**
-  - Modified `src/components/Popup.tsx` to handle content script context (added prop, imported `isCheckoutPage`, updated `useEffect` logic with `await`).
-  - Modified `src/content/content.tsx` to use named import for `Popup` and pass `isContentScriptContext={true}` prop.
-- **Refactored Content Script to use React:**
-  - Created `src/content/content.tsx` with a basic React component and injection logic.
-  - Updated `webpack.config.cjs` to use `src/content/content.tsx` as the entry point.
-  - Removed the old `src/content/content.ts` file.
-  - Successfully tested initial React component injection.
+- **Refactored OpenAI Web Search Implementation (`background.ts`):**
+    - Changed the API call for `openai-gpt-o3-mini` from `openai.chat.completions.create` to `openai.responses.create`.
+    - Utilized the `web_search_preview_2025_03_11` tool type within `openai.responses.create` to enable built-in web search functionality.
+    - Updated response handling to correctly parse the nested structure (`output` -> `message` -> `content` -> `output_text`) returned by `openai.responses.create`.
+- **Refactored AI Interaction to Two-Step Process (Simplified & Optimized):**
+    - Split prompts into `productIdentificationPrompt` and `ethicalAlternativesPrompt` (`src/constants/prompts.ts`).
+    - Refactored `aiService.ts` with new types (simplified model list), `callAIModel` function, step/model parameters, and timing logic. Removed cost fields/logic.
+    - Refactored `background.ts` to handle `CALL_AI_MODEL` messages, route to allowed API clients (Gemini, OpenAI), manage steps, and return structured `AIResponse` (with timing, no cost). Removed Gemini safety settings, cost logic, and handling for removed models. Installed `openai` package.
+    - Updated `src/config.ts` to include `OPENAI_API_KEY`. Verified `DotenvWebpackPlugin` in `webpack.config.cjs`.
+    - Overhauled `Popup.tsx` UI and logic for the two-step flow, adding simplified model selection dropdowns, separate buttons, and display areas for results and time per step. Removed cost state and display logic. **Moved HTML processing (`processHtmlForAI`) to occur on Step 1 button click instead of page load.**
+    - Added/adjusted styles for the two-step UI elements in `src/styles.scss`.
+- **Implemented "Show Alternatives" Feature (with Refinements):** (Superseded by two-step refactor)
+- **Optimized AI Context with HTML Minification & Markdown Conversion:** (Helper function still relevant)
+- **Added Global Pause/Unpause Feature:** (Still relevant)
+- **Added Conditional Rendering & Dismiss for Content Script Popup:** (Still relevant)
+- **Updated Content Script to Render Full Popup:** (Still relevant)
+- **Refactored Content Script to use React:** (Still relevant)
 - Initialized Memory Bank
 - Created `productContext.md`
 - Created `activeContext.md`
 - Created `decisionLog.md`
-- **Completed build system conversion from Vite to Webpack:**
-  - Installed Webpack dependencies
-  - Created `webpack.config.js` (renamed to `.cjs`)
-  - Updated `package.json` scripts (`dev`, `build`, added `watch`)
-  - Removed Vite dependencies and configuration
-  - Fixed `tsconfig.json` for Webpack/ts-loader compatibility
-  - Corrected React/ReactDOM imports
-  - Successfully tested `npm run build` and `npm run dev`
-- Fixed extension build configuration issues (related to previous Vite setup)
-- Added project organization improvements:
-  - Created .gitignore for proper version control
-  - Configured build artifact exclusions
-  - Set up standard Node.js ignores
-- Implemented checkout detection improvements:
-  - Added development environment support
-  - Created storage abstraction layer
-  - Added testing UI for live detection testing
-  - Integrated DOM-based analysis capabilities
-- Fixed messaging system issues:
-  - Resolved "Could not establish connection" error
-  - Improved async message handling
-  - Removed duplicate message listeners
-- Configured cross-browser compatibility:
-  - Added Firefox (gecko) configuration
-  - Added Edge-specific settings
-  - Set Safari minimum version requirement
-  - Updated manifest.json with browser-specific settings
-- Implemented AI Integration:
-  - Added Google Generative AI service
-  - Created dual-mode architecture for dev/extension environments
-  - Implemented environment-aware API calls
-  - Added UI components for AI interaction
-  - Set up secure API key handling
-  - Added error handling and loading states
-  - Configured development environment testing
+- **Completed build system conversion from Vite to Webpack:** (Still relevant)
+- Fixed extension build configuration issues
+- Added project organization improvements
+- Implemented checkout detection improvements
+- Fixed messaging system issues
+- Configured cross-browser compatibility
+- Implemented AI Integration (Initial Google AI setup)
 
 ## Next Steps
 
-- **Test "Show Alternatives" Feature:** (Immediate Next Step)
-  - Run `npm run build`.
-  - Manually load the unpacked extension (from `dist/`) into a browser.
-  - Navigate to a checkout page.
-  - Click the "Show Ethical Alternatives" button.
-  - Verify the loading spinner appears.
-  - Verify the AI response is fetched using `alternativesPrompt`.
-  - Verify the response is parsed correctly and displayed in the new structured format (including thumbnail).
-  - Verify the entire alternative product entry is clickable and links correctly.
-  - Verify hover effects on the clickable entry.
-  - Test error handling (e.g., invalid JSON response, network error, missing thumbnail).
-  - Test the "Refresh Alternatives" functionality.
-- **Test Global Pause/Unpause Feature:**
-  - Run `npm run build`.
-  - Manually load the unpacked extension (from `dist/`) into a browser.
-  - Open the extension popup and toggle the pause switch. Verify the state persists after closing/reopening the popup.
-  - With the extension paused, navigate to a checkout page and verify the content script popup does *not* appear.
-  - Unpause the extension via the popup.
-  - Navigate to a checkout page (or refresh) and verify the content script popup *does* appear.
-- **Test AI Integration with Page Context:**
-  - Run `npm run build`.
-  - Manually load the unpacked extension (from `dist/`) into a browser.
-  - Navigate to a checkout page.
-  - Use the *generic* AI prompt in the injected Popup (before clicking "Show Alternatives").
-  - Verify (e.g., via network logs or debugging background script) that the processed page **Markdown** (not raw HTML) is included in the API request to Gemini.
-  - Verify the AI response seems relevant to the page content.
-- **Test Conditional Content Script Popup:**
-  - Run `npm run build`.
-  - Manually load the unpacked extension (from `dist/`) into a browser.
-  - Verify the `Popup` only appears on pages detected as checkout pages.
-  - Verify the `Popup` does *not* appear on non-checkout pages.
-  - Verify the dismiss ('x') button works correctly on checkout pages where the popup appears.
-- **Test Extension Functionality:** Manually load the unpacked extension (from `dist/`) into a browser and verify popup and background script interactions (in addition to the content script).
-- Enhance AI Features:
-  - Implement response streaming for better UX
-  - Add conversation history support
-  - Improve response formatting (both generic and alternatives)
-  - Add rate limiting for API calls
-  - Create AI response templates
-- Test AI Integration:
-  - Add unit tests for AI service
-  - Test environment detection logic
-  - Verify error handling scenarios
-  - Test message passing in extension
-  - Validate API response handling
-- Implement cross-browser testing:
-  - Set up Firefox testing environment
-  - Test Edge-specific functionality
-  - Verify Safari compatibility
-  - Document browser-specific differences
-- Fix failing tests:
-  - Resolve cache functionality issues
-  - Fix storage mocking in tests
-  - Improve DOM error handling
-  - **Adapt tests to Webpack environment (if needed, currently using Vitest)**
-- Complete testing UI:
-  - Add more test cases
-  - Improve UI feedback
-  - Add test result history
-- Implement core extension features:
-  - Refine checkout page detection
-  - Add ethical alternative suggestions (UI part done, logic needs refinement/testing)
-  - Enhance user interface interactions
-- Cross-browser development:
-  - Create browser-specific build configurations (using Webpack)
-  - Implement fallbacks for unsupported APIs
-  - Test messaging system across browsers
-- Documentation improvements:
-  - Add browser compatibility notes
-  - Document Webpack build process for each browser
-  - Create deployment guides for different stores
-  - Add AI integration documentation (including alternatives feature)
-  - Document environment setup process
-- Set up continuous integration workflow:
-  - Add multi-browser testing pipeline
-  - Implement automated compatibility checks
-  - Set up separate build targets per browser (using Webpack)
-  - Add API key security checks
+- **Test Two-Step AI Refactoring (Simplified & Optimized):** (Immediate Next Step)
+    - **Build:** Run `npm run build`. Ensure API keys (Google, OpenAI) are correctly set in the `.env` file.
+    - **Load:** Manually load the unpacked extension (from `dist/`).
+    - **Navigate:** Go to a checkout page (ideally one that might load content dynamically).
+    - **Step 1 Execution:**
+        - Verify Step 1 dropdown only shows 'gemini-flash-2.0'.
+        - Click "Identify Product".
+        - Verify HTML processing happens now (check console logs if needed).
+        - Verify loading state and execution time display.
+        - Verify product details are displayed correctly.
+        - Test error handling (including HTML processing errors).
+    - **Step 2 Execution:**
+        - Verify Step 2 dropdown only shows 'openai-gpt-o3-mini', 'gemini-flash-2.0-grounded'.
+        - Select a model. Click "Find Alternatives".
+        - Verify loading state and execution time display.
+        - Verify ethical status and alternatives are displayed correctly.
+        - Test error handling (including unimplemented grounding/web search).
+    - **Model Switching:** Test switching Step 2 models.
+- **Test Global Pause/Unpause Feature:** (Verify still works)
+- **Test Conditional Content Script Popup & Dismiss:** (Verify still works)
+- **Test Extension Functionality:** General manual testing.
+- **Implement Missing AI Features:**
+    - **OpenAI:** Web search for `openai-gpt-o3-mini` is now implemented using `openai.responses.create` and the `web_search_preview_2025_03_11` tool. Further refinement or alternative methods (like Assistants API) could be explored if needed.
+    - **Gemini:** Implement grounding parameters for 'gemini-flash-2.0-grounded'.
+- **Enhance AI Features:**
+    - Implement response streaming for better UX.
+    - Add conversation history support.
+    - Improve response formatting.
+    - Add rate limiting for API calls.
+    - Create AI response templates.
+- **Test AI Integration:**
+    - Add unit tests for AI service (`aiService.ts`).
+    - Test environment detection logic.
+    - Verify error handling scenarios more thoroughly.
+    - Test message passing in extension.
+    - Validate API response handling.
+- **Implement cross-browser testing:**
+    - Set up Firefox testing environment.
+    - Test Edge-specific functionality.
+    - Verify Safari compatibility.
+    - Document browser-specific differences.
+- **Fix failing tests:** (If any)
+- **Complete testing UI:** (Dev UI)
+- **Implement core extension features:**
+    - Refine checkout page detection logic.
+    - Enhance user interface interactions.
+- **Cross-browser development:**
+    - Create browser-specific build configurations.
+    - Implement fallbacks for unsupported APIs.
+    - Test messaging system across browsers.
+- **Documentation improvements:**
+    - Add browser compatibility notes.
+    - Document Webpack build process.
+    - Create deployment guides.
+    - Update AI integration documentation (two-step flow, simplified model selection, timing, on-demand HTML processing).
+    - Document environment setup (`.env`).
+- **Set up continuous integration workflow:**
+    - Add multi-browser testing pipeline.
+    - Implement automated compatibility checks.
+    - Set up separate build targets per browser.
+    - Add API key security checks.

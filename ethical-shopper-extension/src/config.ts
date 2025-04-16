@@ -1,5 +1,7 @@
 export const config = {
-  // Replace this with your actual API key through environment variables
-  // or extension settings in production
-  GOOGLE_AI_API_KEY: process.env.GOOGLE_AI_API_KEY || 'YOUR_API_KEY',
+  // Replace these with your actual API keys through environment variables
+  // (e.g., using DotenvWebpackPlugin in webpack.config.cjs)
+  // or extension settings in production.
+  GOOGLE_AI_API_KEY: process.env.GOOGLE_AI_API_KEY || '', // Default to empty string if not set
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '', // Default to empty string if not set
 };

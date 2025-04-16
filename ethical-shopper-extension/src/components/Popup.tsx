@@ -1,19 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { generateAIResponse } from '../services/aiService';
-import { isCheckoutPage } from '../services/checkoutDetector'; // Import the detector
-import { alternativesPrompt } from '../constants/prompts'; // Import the alternatives prompt
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+    callAIModel,
+    processHtmlForAI,
+    AIResponse,
+    StepOneModel,
+    StepTwoModel,
+    ModelName // Assuming ModelName is exported as StepOneModel | StepTwoModel
+} from '../services/aiService';
+import { isCheckoutPage } from '../services/checkoutDetector';
+import { productIdentificationPrompt, ethicalAlternativesPrompt } from '../constants/prompts';
 
-// Define interfaces for the expected AI response structure
-interface AlternativeProducts {
+// --- Interfaces for AI Responses (matching prompts.ts) ---
+interface IdentifiedProduct {
   name: string;
-  thumbnail: string; // URL of the product image
-  company: string; // Selling site
   brand: string;
+  company: string; // Selling site
   price: string;
-  ethicalStatus: string; // Description of ethics
-  ethicalAlternatives?: CompanyAlternative[]; // More ethical companies
-  comparableProducts?: EthicalProduct[]; // Specific product alternatives
-  purchaseLink?: string; // Added for comparable products
+  thumbnail: string; // URL of the product image
 }
 
 interface CompanyAlternative {
@@ -25,150 +28,130 @@ interface CompanyAlternative {
 interface EthicalProduct {
   name: string;
   thumbnail: string; // URL of the product image
-  company: string;
+  company: string; // Selling site for the alternative
   brand: string;
   price: string;
-  purchaseLink: string;
+  purchaseLink: string; // Link to buy the alternative
 }
 
+interface EthicalAnalysisResult {
+  ethicalStatus: string; // Description of original product/company ethics
+  ethicalAlternatives?: CompanyAlternative[]; // More ethical companies
+  comparableProducts?: EthicalProduct[]; // Specific product alternatives
+}
 
+// --- Component Props ---
 interface PopupProps {
   isCheckoutForTesting?: boolean;
-  isContentScriptContext?: boolean; // Flag for content script context
-  onDismiss?: () => void; // Optional dismiss handler
+  isContentScriptContext?: boolean;
+  onDismiss?: () => void;
 }
 
-export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScriptContext, onDismiss }) => {
-  const [isCheckout, setIsCheckout] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [prompt, setPrompt] = useState('');
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false); // For the generic AI prompt
-  const [isPaused, setIsPaused] = useState<boolean>(false); // State for pause toggle
-  const [showAlternatives, setShowAlternatives] = useState(false); // Control visibility of alternatives section
-  const [alternativesLoading, setAlternativesLoading] = useState(false); // Loading state for alternatives
-  const [alternativesData, setAlternativesData] = useState<AlternativeProducts[] | null>(null); // Store parsed alternatives
-  const [alternativesError, setAlternativesError] = useState<string | null>(null); // Error state for alternatives fetch
+// --- Model Options ---
+// --- Model Options ---
+// Only include models explicitly requested by the user
+const stepOneModels: StepOneModel[] = ['gemini-flash-2.0']; // Only Gemini Flash for Step 1
+const stepTwoModels: StepTwoModel[] = ['openai-gpt-o3-mini', 'gemini-flash-2.0-grounded']; // Only O3 Mini and Grounded Gemini Flash for Step 2
 
-  // Effect to load initial pause state (only in popup context)
+export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScriptContext, onDismiss }) => {
+  // --- State ---
+  const [isCheckout, setIsCheckout] = useState<boolean | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true); // For initial page check
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  // Removed pageMarkdown state. Will process on demand.
+
+  // Step 1 State
+  const [selectedStepOneModel, setSelectedStepOneModel] = useState<StepOneModel>(stepOneModels[0]);
+  const [stepOneLoading, setStepOneLoading] = useState(false);
+  const [stepOneError, setStepOneError] = useState<string | null>(null);
+  const [identifiedProduct, setIdentifiedProduct] = useState<IdentifiedProduct | null>(null);
+  const [identifiedProductJson, setIdentifiedProductJson] = useState<string | null>(null); // Store raw JSON for step 2
+  const [stepOneTimeMs, setStepOneTimeMs] = useState<number | null>(null);
+  // Removed stepOneCost state
+
+  // Step 2 State
+  const [selectedStepTwoModel, setSelectedStepTwoModel] = useState<StepTwoModel>(stepTwoModels[0]);
+  const [stepTwoLoading, setStepTwoLoading] = useState(false);
+  const [stepTwoError, setStepTwoError] = useState<string | null>(null);
+  const [ethicalAnalysisResult, setEthicalAnalysisResult] = useState<EthicalAnalysisResult | null>(null);
+  const [stepTwoTimeMs, setStepTwoTimeMs] = useState<number | null>(null);
+  // Removed stepTwoCost state
+
+  // --- Effects ---
+
+  // Load pause state
   useEffect(() => {
     if (!isContentScriptContext && typeof chrome !== 'undefined' && chrome.storage?.local) {
       chrome.storage.local.get(['extensionPaused'], (result) => {
         if (chrome.runtime.lastError) {
           console.error('Error getting pause state:', chrome.runtime.lastError);
         } else {
-          setIsPaused(!!result.extensionPaused); // Default to false if not set
+          setIsPaused(!!result.extensionPaused);
         }
       });
     }
   }, [isContentScriptContext]);
 
+  // Check page and process HTML -> Markdown
   useEffect(() => {
-    const checkCurrentPage = async () => {
-      setLoading(true);
-      setError(null); // Reset error on check
+    const checkAndProcessPage = async () => {
+      setInitialLoading(true);
+      setStepOneError(null); // Reset errors on page check
+      setStepTwoError(null);
+      setIdentifiedProduct(null);
+      setEthicalAnalysisResult(null);
+      // Removed pageMarkdown reset
 
-      // If running in content script context, check directly
-      if (isContentScriptContext) {
-        try {
-          const result = await isCheckoutPage(window.location.href, document); // Await the promise
-          setIsCheckout(result);
-        } catch (err) {
-          setError('Error checking page status.');
-          setIsCheckout(false);
-        } finally {
-          setLoading(false);
-        }
-        return; // Don't proceed with chrome.tabs logic
-      }
-
-      // --- Original Popup Context Logic ---
-      if (isCheckoutForTesting !== undefined) {
-        setIsCheckout(isCheckoutForTesting);
-        setLoading(false);
-        return;
-      }
-
-      // Check if chrome.tabs is available (robustness check)
-      if (typeof chrome === 'undefined' || !chrome.tabs) {
-          console.error("chrome.tabs API is not available in this context.");
-          setError("Cannot check page status from this context.");
-          setIsCheckout(false);
-          setLoading(false);
-          return;
-      }
+      let checkoutStatus = false;
+      let errorMsg: string | null = null;
 
       try {
-        // Get the active tab
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.id || !tab?.url) {
-          setIsCheckout(false);
-          setLoading(false);
-          return;
+        if (isContentScriptContext) {
+          checkoutStatus = await isCheckoutPage(window.location.href, document);
+        } else if (isCheckoutForTesting !== undefined) {
+          checkoutStatus = isCheckoutForTesting;
+        } else if (typeof chrome !== 'undefined' && chrome.tabs) {
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (tab?.id) {
+            // Use try-catch for sendMessage as it can throw if the tab/content script isn't ready
+            try {
+                const response = await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_CHECKOUT' });
+                checkoutStatus = response?.isCheckout ?? false;
+            } catch (msgError) {
+                console.warn("Could not message content script (might not be injected yet or on a restricted page):", msgError);
+                checkoutStatus = false; // Assume not checkout if we can't communicate
+            }
+          }
+        } else {
+           errorMsg = "Cannot check page status from this context.";
         }
 
-        // Send message to content script to check if it's a checkout page
-        chrome.tabs.sendMessage(
-          tab.id,
-          { type: 'CHECK_CHECKOUT' },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              // Don't assume it's not a checkout page, maybe the content script isn't injected yet or failed
-              // setError(`Error communicating with page: ${chrome.runtime.lastError.message}`);
-              // Keep isCheckout as null or handle appropriately, maybe retry? For now, set to false.
-              setIsCheckout(false);
-            } else {
-              setIsCheckout(response?.isCheckout ?? false);
-            }
-            setLoading(false);
-          }
-        );
-      } catch (error) {
-        setError('Error checking page status.');
+        setIsCheckout(checkoutStatus);
+
+        // Removed HTML processing from initial check
+
+      } catch (err: any) {
+        console.error('Error checking/processing page:', err);
+        errorMsg = `Error checking page status: ${err.message || String(err)}`;
         setIsCheckout(false);
-        setLoading(false);
+      } finally {
+        if (errorMsg) setStepOneError(errorMsg); // Show error in step 1 area
+        setInitialLoading(false);
       }
     };
 
-    checkCurrentPage();
-  }, [isCheckoutForTesting, isContentScriptContext]); // Add isContentScriptContext to dependency array
+    checkAndProcessPage();
+  }, [isCheckoutForTesting, isContentScriptContext]); // Re-run if context changes
 
-  const handleAiSubmit = async () => {
-    if (!prompt.trim()) return;
-    
-    setAiLoading(true);
-    try {
-      // Get the current page's HTML content
-      const pageHtml = document.documentElement.outerHTML;
-      const response = await generateAIResponse(prompt, pageHtml);
-      setAiResponse(response);
-      setError(null);
-    } catch (error) {
-      setError('Failed to generate response. Please try again.');
-      console.error('Error getting AI response:', error);
-      setAiResponse('Sorry, there was an error generating the response. Please try again.');
-    } finally {
-      setAiLoading(false);
-    }
-  };
+  // --- Handlers ---
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) handleAiSubmit();
-  };
-
-  // Handler for the pause toggle
   const handlePauseToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newPauseState = event.target.checked;
     setIsPaused(newPauseState);
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      // Send message to background to update storage
       chrome.runtime.sendMessage({ type: 'SET_PAUSE_STATE', paused: newPauseState }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('Error setting pause state:', chrome.runtime.lastError.message);
-          // Optionally revert UI state or show error
-        } else if (!response?.success) {
-          console.error('Background script failed to set pause state.');
+        if (chrome.runtime.lastError || !response?.success) {
+          console.error('Error setting pause state:', chrome.runtime.lastError?.message || 'Background script failed.');
           // Optionally revert UI state or show error
         } else {
           console.log('Pause state updated successfully.');
@@ -179,73 +162,141 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
     }
   };
 
-  // Handler for the "Show Alternatives" button
-  const handleShowAlternativesClick = async () => {
-    setShowAlternatives(true); // Show the alternatives section immediately
-    setAlternativesLoading(true);
-    setAlternativesData(null);
-    setAlternativesError(null);
-    setAiResponse(null); // Clear generic AI response if shown
+  const handleRunStepOne = useCallback(async () => {
+    // Get HTML and process it here, just before the call
+    let currentMarkdown: string | null = null;
+    try {
+        const html = document.documentElement.outerHTML;
+        currentMarkdown = processHtmlForAI(html);
+        if (!currentMarkdown || currentMarkdown === "[Error processing page content]") {
+             throw new Error("Failed to process page content.");
+        }
+    } catch (err: any) {
+         setStepOneError(`Error processing page HTML: ${err.message}`);
+         setStepOneLoading(false); // Ensure loading stops if processing fails
+         return;
+    }
+
+    setStepOneLoading(true);
+    setStepOneError(null);
+    setIdentifiedProduct(null);
+    setIdentifiedProductJson(null);
+    setStepOneTimeMs(null);
+    // Removed cost reset
+    // Clear step 2 results as well
+    setStepTwoLoading(false);
+    setStepTwoError(null);
+    setEthicalAnalysisResult(null);
+    setStepTwoTimeMs(null);
+    // Removed cost reset
+
 
     try {
-      const pageHtml = document.documentElement.outerHTML;
-      // Use the specific alternativesPrompt
-      const rawResponse = await generateAIResponse(alternativesPrompt, pageHtml);
+        console.log(`Running Step 1 with model: ${selectedStepOneModel}`);
+        const response: AIResponse = await callAIModel({
+            step: 1,
+            modelName: selectedStepOneModel,
+            basePrompt: productIdentificationPrompt,
+            pageMarkdown: currentMarkdown, // Use the just-processed markdown
+        });
+        console.log("Step 1 Response:", response);
 
-      if (!rawResponse) {
-        throw new Error('Received empty response from AI.');
-      }
+        setStepOneTimeMs(response.timeMs);
+        // Removed cost setting
 
-      // Attempt to parse the JSON response
-      try {
-        // Find the start and end of the JSON array/object
-        const jsonStart = rawResponse.indexOf('[');
-        const jsonEnd = rawResponse.lastIndexOf(']');
-        let jsonData: AlternativeProducts[];
-
-        if (jsonStart !== -1 && jsonEnd !== -1) {
-          const jsonString = rawResponse.substring(jsonStart, jsonEnd + 1);
-          jsonData = JSON.parse(jsonString);
-           // Basic validation (check if it's an array)
-          if (!Array.isArray(jsonData)) {
-            throw new Error('AI response is not a valid JSON array.');
-          }
-          setAlternativesData(jsonData);
-        } else {
-           // Handle cases where the response might be a single object or malformed
-           // Try parsing as an object if array markers aren't found
-           const objectStart = rawResponse.indexOf('{');
-           const objectEnd = rawResponse.lastIndexOf('}');
-           if (objectStart !== -1 && objectEnd !== -1) {
-               const jsonString = rawResponse.substring(objectStart, objectEnd + 1);
-               const singleProduct = JSON.parse(jsonString);
-               // Wrap single object in an array if needed, or handle appropriately
-               // For now, assume the prompt *should* return an array as requested.
-               // If it's consistently an object, the prompt/type needs adjustment.
-               console.warn("AI returned a single object, expected array. Wrapping.");
-               setAlternativesData([singleProduct]); // Example: wrap it
-           } else {
-               throw new Error('Could not find valid JSON array or object markers in the AI response.');
-           }
+        // Attempt to parse the JSON response for Step 1
+        try {
+            // Basic check for JSON structure before parsing
+            const trimmedData = response.data.trim();
+            if (trimmedData.startsWith('{') && trimmedData.endsWith('}')) {
+                const parsedData: IdentifiedProduct = JSON.parse(trimmedData);
+                // TODO: Add more robust validation if needed
+                setIdentifiedProduct(parsedData);
+                setIdentifiedProductJson(trimmedData); // Store raw JSON for step 2
+            } else {
+                 throw new Error('AI response for Step 1 is not a valid JSON object.');
+            }
+        } catch (parseError: any) {
+            console.error('Error parsing Step 1 JSON response:', parseError, 'Raw response:', response.data);
+            setStepOneError(`Failed to parse product data from AI: ${parseError.message}. Raw: ${response.data}`);
+            setIdentifiedProduct(null);
+            setIdentifiedProductJson(null);
         }
 
+    } catch (error: any) {
+        console.error('Error running Step 1:', error);
+        setStepOneError(error.message || 'Failed to identify product.');
+        setIdentifiedProduct(null);
+        setIdentifiedProductJson(null);
+    } finally {
+        setStepOneLoading(false);
+    }
+  }, [selectedStepOneModel]); // Removed pageMarkdown from dependency array
 
-      } catch (parseError) {
-        console.error('Error parsing AI JSON response:', parseError, 'Raw response:', rawResponse);
-        throw new Error('Failed to parse ethical alternatives data from AI.');
-      }
+  const handleRunStepTwo = useCallback(async () => {
+    if (!identifiedProductJson) {
+        setStepTwoError("Product must be identified in Step 1 first.");
+        return;
+    }
+    setStepTwoLoading(true);
+    setStepTwoError(null);
+    setEthicalAnalysisResult(null);
+    setStepTwoTimeMs(null);
+     // Removed cost reset
+
+    try {
+        console.log(`Running Step 2 with model: ${selectedStepTwoModel}`);
+        const response: AIResponse = await callAIModel({
+            step: 2,
+            modelName: selectedStepTwoModel,
+            basePrompt: ethicalAlternativesPrompt,
+            identifiedProductJson: identifiedProductJson,
+        });
+         console.log("Step 2 Response:", response);
+
+        setStepTwoTimeMs(response.timeMs);
+        // Removed cost setting
+
+        // Attempt to parse the JSON response for Step 2
+        try {
+             // Basic check for JSON structure before parsing
+            const trimmedData = response.data.trim();
+            if (trimmedData.startsWith('{') && trimmedData.endsWith('}')) {
+                const parsedData: EthicalAnalysisResult = JSON.parse(trimmedData);
+                 // TODO: Add more robust validation if needed
+                setEthicalAnalysisResult(parsedData);
+            } else {
+                 throw new Error('AI response for Step 2 is not a valid JSON object.');
+            }
+        } catch (parseError: any) {
+            console.error('Error parsing Step 2 JSON response:', parseError, 'Raw response:', response.data);
+            setStepTwoError(`Failed to parse alternatives data from AI: ${parseError.message}. Raw: ${response.data}`);
+            setEthicalAnalysisResult(null);
+        }
 
     } catch (error: any) {
-      console.error('Error fetching alternatives:', error);
-      setAlternativesError(error.message || 'Failed to fetch ethical alternatives. Please try again.');
-      setAlternativesData(null); // Ensure data is null on error
+        console.error('Error running Step 2:', error);
+        setStepTwoError(error.message || 'Failed to find alternatives.');
+        setEthicalAnalysisResult(null);
     } finally {
-      setAlternativesLoading(false);
+        setStepTwoLoading(false);
     }
+  }, [identifiedProductJson, selectedStepTwoModel]);
+
+
+  // --- Render Helper ---
+  const renderTime = (timeMs: number | null) => {
+      if (timeMs === null) return null;
+      return (
+          <div className="perf-info">
+              <span>Time: {(timeMs / 1000).toFixed(2)}s</span>
+          </div>
+      );
   };
 
+  // --- Main Render ---
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="popup">
         <p>Checking page...</p>
@@ -253,134 +304,140 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
     );
   }
 
-  // Refactored return to have a single parent div.popup
   return (
-    <div className="popup" style={{ position: 'relative' }}> {/* Added relative positioning for absolute child */}
-      {/* Dismiss Button - only shown in content script context */}
+    <div className="popup" style={{ position: 'relative' }}>
+      {/* Dismiss Button */}
       {isContentScriptContext && onDismiss && (
-        <button
-          onClick={onDismiss}
-          aria-label="Dismiss"
-          style={{
-            position: 'absolute',
-            top: '5px',
-            right: '5px',
-            background: 'transparent',
-            border: 'none',
-            fontSize: '16px',
-            lineHeight: '1',
-            cursor: 'pointer',
-            padding: '2px 5px',
-            color: '#666', // Adjust color as needed
-          }}
-        >
-          &times; {/* HTML entity for 'x' */}
-        </button>
+        <button onClick={onDismiss} aria-label="Dismiss" className="dismiss-button">&times;</button>
       )}
 
-      {/* Pause Toggle - only shown in popup context */}
+      {/* Pause Toggle */}
       {!isContentScriptContext && (
-        <div className="pause-toggle" style={{ paddingBottom: '10px', borderBottom: '1px solid #eee', marginBottom: '10px' }}>
-          <label htmlFor="pause-switch" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+        <div className="pause-toggle">
+          <label htmlFor="pause-switch">
             <input
               type="checkbox"
               id="pause-switch"
               checked={isPaused}
               onChange={handlePauseToggle}
-              style={{ marginRight: '8px' }}
             />
             <span>{isPaused ? 'Extension Paused' : 'Extension Active'}</span>
           </label>
         </div>
       )}
 
-      {/* Conditional content based on checkout status */}
+      {/* Main Content */}
       {isCheckout ? (
         <div className="checkout-detected">
-          <h2>Checkout Detected!</h2>
+          <h2>Ethical Shopper Analysis</h2>
 
-          {/* Hide generic AI prompt when alternatives are shown/loading */}
-          {!showAlternatives && (
-            <>
-              <p>Ask our AI about this product or company:</p>
-              <div className="ai-section">
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="e.g., Is this company ethical?"
-                  className="ai-input"
-                  disabled={aiLoading}
-                  rows={3}
-                  aria-label="AI prompt input"
-                />
-                <button
-                  className="secondary-button" // Changed style
-                  onClick={handleAiSubmit}
-                  disabled={aiLoading || !prompt.trim()}
+          {/* --- Step 1: Product Identification --- */}
+          <div className="step-section">
+            <h3>Step 1: Identify Product</h3>
+            <div className="model-selector">
+                <label htmlFor="step1-model">Model: </label>
+                <select
+                    id="step1-model"
+                    value={selectedStepOneModel}
+                    onChange={(e) => setSelectedStepOneModel(e.target.value as StepOneModel)}
+                    disabled={stepOneLoading || stepTwoLoading}
                 >
-                  {aiLoading ? 'Thinking...' : 'Ask AI'}
-                </button>
-                {error && (
-                  <div className="error-message">
-                    {error}
-                  </div>
-                )}
-                {aiResponse && (
-                  <div className="ai-response" role="region" aria-label="AI response">{aiResponse}</div>
-                )}
-              </div>
-              <hr className="separator" />
-              <p>Or, let us find ethical alternatives for you:</p>
-            </>
-          )}
+                    {stepOneModels.map(model => <option key={model} value={model}>{model}</option>)}
+                </select>
+            </div>
+            <button
+                className="primary-button"
+                onClick={handleRunStepOne}
+                disabled={stepOneLoading || stepTwoLoading} // Button is enabled once initial check is done if it's a checkout page
+            >
+                {stepOneLoading ? 'Identifying...' : 'Identify Product'}
+            </button>
 
-          {/* Show Alternatives Button - always visible if checkout detected, unless loading alternatives */}
-           {!alternativesLoading && (
-             <button
-               className="primary-button show-alternatives-button"
-               onClick={handleShowAlternativesClick}
-               disabled={alternativesLoading} // Disable while loading alternatives
-             >
-               {showAlternatives ? 'Refresh Alternatives' : 'Show Ethical Alternatives'}
-             </button>
-           )}
+            {stepOneLoading && <div className="spinner">Running Step 1...</div>}
+            {stepOneError && <div className="error-message">{stepOneError}</div>}
+            {renderTime(stepOneTimeMs)}
 
+            {identifiedProduct && !stepOneLoading && (
+                <div className="step-result identified-product">
+                    <h4>Identified Product:</h4>
+                    <div className="product-card">
+                         {identifiedProduct.thumbnail && (
+                            <img src={identifiedProduct.thumbnail} alt={identifiedProduct.name} className="product-thumbnail-small" />
+                         )}
+                         <div className="product-details-small">
+                            <p><strong>Name:</strong> {identifiedProduct.name || 'N/A'}</p>
+                            <p><strong>Brand:</strong> {identifiedProduct.brand || 'N/A'}</p>
+                            <p><strong>Seller:</strong> {identifiedProduct.company || 'N/A'}</p>
+                            <p><strong>Price:</strong> {identifiedProduct.price || 'N/A'}</p>
+                         </div>
+                    </div>
+                </div>
+            )}
+          </div>
 
-          {/* Alternatives Section */}
-          {showAlternatives && (
-            <div className="alternatives-section">
-              {alternativesLoading && (
-                <div className="spinner">Loading alternatives...</div> // Simple spinner text for now
-              )}
-              {alternativesError && (
-                <div className="error-message">{alternativesError}</div>
-              )}
-              {alternativesData && !alternativesLoading && (
-                <div className="alternatives-results">
-                  <h3>Ethical Analysis & Alternatives</h3>
-                  {alternativesData.length === 0 && <p>No specific products identified on this page for analysis.</p>}
-                  {alternativesData.map((product, index) => (
-                    <div key={index} className="original-product-analysis">
-                      <h4>Original Product: {product.name || 'Unknown Product'}</h4>
-                      <p><strong>Brand:</strong> {product.brand || 'N/A'}</p>
-                      <p><strong>Sold By:</strong> {product.company || 'N/A'}</p>
-                      <p><strong>Price:</strong> {product.price || 'N/A'}</p>
-                      <p><strong>Ethical Status:</strong> {product.ethicalStatus || 'No information available.'}</p>
+          <hr className="separator" />
 
-                      {product.comparableProducts && product.comparableProducts.length > 0 && (
-                        <div className="ethical-alternatives-list">
-                          <h5>Suggested Ethical Alternatives:</h5>
-                          {product.comparableProducts.map((alt, altIndex) => (
-                            // Make the entire div a clickable link if purchaseLink exists
+          {/* --- Step 2: Ethical Alternatives --- */}
+          <div className="step-section">
+            <h3>Step 2: Find Ethical Alternatives</h3>
+             <div className="model-selector">
+                <label htmlFor="step2-model">Model: </label>
+                <select
+                    id="step2-model"
+                    value={selectedStepTwoModel}
+                    onChange={(e) => setSelectedStepTwoModel(e.target.value as StepTwoModel)}
+                    disabled={stepOneLoading || stepTwoLoading || !identifiedProduct}
+                >
+                    {stepTwoModels.map(model => <option key={model} value={model}>{model}</option>)}
+                </select>
+            </div>
+            <button
+                className="primary-button"
+                onClick={handleRunStepTwo}
+                disabled={!identifiedProduct || stepOneLoading || stepTwoLoading} // Disabled until step 1 is complete
+            >
+                {stepTwoLoading ? 'Searching...' : 'Find Alternatives'}
+            </button>
+
+            {stepTwoLoading && <div className="spinner">Running Step 2...</div>}
+            {stepTwoError && <div className="error-message">{stepTwoError}</div>}
+            {renderTime(stepTwoTimeMs)}
+
+            {ethicalAnalysisResult && !stepTwoLoading && (
+                <div className="step-result alternatives-section"> {/* Re-use alternatives-section class */}
+                    <h4>Ethical Analysis & Alternatives:</h4>
+                    <div className="original-product-analysis"> {/* Re-use class */}
+                         <p><strong>Ethical Status Summary:</strong> {ethicalAnalysisResult.ethicalStatus || 'No analysis available.'}</p>
+                    </div>
+
+                    {/* Display Company Alternatives if available */}
+                    {ethicalAnalysisResult.ethicalAlternatives && ethicalAnalysisResult.ethicalAlternatives.length > 0 && (
+                        <div className="ethical-companies-list">
+                             <h5>More Ethical Companies Suggested:</h5>
+                             {ethicalAnalysisResult.ethicalAlternatives.map((comp, idx) => (
+                                <div key={idx} className="company-alternative">
+                                    {comp.logoThumbnail && <img src={comp.logoThumbnail} alt={comp.name} className="company-logo-small"/>}
+                                    <div>
+                                        <strong>{comp.name}</strong>: {comp.reasoning}
+                                    </div>
+                                </div>
+                             ))}
+                        </div>
+                    )}
+
+                    {/* Display Product Alternatives */}
+                    {ethicalAnalysisResult.comparableProducts && ethicalAnalysisResult.comparableProducts.length > 0 ? (
+                        <div className="ethical-alternatives-list"> {/* Re-use class */}
+                          <h5>Suggested Alternative Products:</h5>
+                          {ethicalAnalysisResult.comparableProducts.map((alt, altIndex) => (
                             <a
                               key={altIndex}
                               href={alt.purchaseLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="alternative-product-link" // New class for styling the link block
+                              className="alternative-product-link"
                             >
-                              <div className="alternative-product"> {/* Keep inner div for structure */}
+                              <div className="alternative-product">
                                 {alt.thumbnail && (
                                   <img src={alt.thumbnail} alt={alt.name} className="alternative-thumbnail" />
                                 )}
@@ -393,23 +450,18 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
                             </a>
                           ))}
                         </div>
-                      )}
-                       {!product.comparableProducts || product.comparableProducts.length === 0 && (
+                      ) : (
                          <p><em>No specific alternative products found.</em></p>
-                       )}
-                    </div>
-                  ))}
+                      )}
                 </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
+
         </div>
       ) : (
         <div className="no-checkout">
           <h2>Not a Checkout Page</h2>
           <p>Keep browsing and we'll notify you when you're ready to checkout!</p>
-          {/* Optionally show something different or nothing if not checkout in content script */}
-          {/* {isContentScriptContext && <p>(This message is from the content script)</p>} */}
         </div>
       )}
     </div>
