@@ -1,68 +1,124 @@
 ## Current Session Context
 
-[Date and time of update: 2025-04-14 01:00 AM EDT]
+[Date and time of update: 2025-05-05 02:38 PM EDT]
 
 ## Recent Changes
-- **Refactored OpenAI Web Search Implementation (`background.ts`):**
-    - Changed the API call for `openai-gpt-o3-mini` from `openai.chat.completions.create` to `openai.responses.create`.
-    - Utilized the `web_search_preview_2025_03_11` tool type within `openai.responses.create` to enable built-in web search functionality.
-    - Updated response handling to correctly parse the nested structure (`output` -> `message` -> `content` -> `output_text`) returned by `openai.responses.create`.
 
+- **Project Restructuring:**
+    - Created `frontend` and `backend` root directories.
+    - Moved the existing `ethical-shopper-extension` code into the `frontend` directory.
+    - Initialized a Node.js project in the `backend` directory with necessary dependencies (`express`, `openai`, `@google/generative-ai`, `typescript`, `ts-node`, `@types/express`, `dotenv`).
+    - Created `backend/src/index.ts` with basic Express server setup and placeholder API routes (`/identify-product`, `/find-alternatives`).
 
-- **Optimized HTML Processing Timing:**
-    - **Popup Component (`src/components/Popup.tsx`):**
+- **AI Logic Migration to Backend:**
+    - Moved AI client initialization (Gemini, OpenAI) and the core `handleAICall` logic from `frontend/ethical-shopper-extension/src/background/background.ts` to `backend/src/index.ts`.
+    - Modified backend API routes (`/identify-product`, `/find-alternatives`) to utilize the `handleAICall` function.
+    - Configured backend to load API keys from environment variables (`.env`).
+    - Updated frontend `frontend/ethical-shopper-extension/src/config.ts` to include `BACKEND_API_URL`.
+    - Modified frontend `frontend/ethical-shopper-extension/src/services/aiService.ts` to make `fetch` calls to the new backend API endpoints instead of using Chrome runtime messages. Removed old messaging and direct call logic.
+    - Cleaned up `frontend/ethical-shopper-extension/src/background/background.ts` by removing the migrated AI code, leaving only the pause state handling.
+    - Updated frontend `frontend/ethical-shopper-extension/webpack.config.cjs` to reflect the new directory structure and ensure correct handling of environment variables for the frontend.
+
+- **Optimized HTML Processing Timing:** (Still relevant)
+    - **Popup Component (`frontend/ethical-shopper-extension/src/components/Popup.tsx`):**
         - Moved the call to `processHtmlForAI` from the initial page load effect into the `handleRunStepOne` handler.
         - Removed the `pageMarkdown` state variable; markdown is now processed on demand when Step 1 is triggered.
         - Added error handling within `handleRunStepOne` in case HTML processing fails.
-- **Simplified Two-Step AI Implementation:**
-    - **Popup Component (`src/components/Popup.tsx`):** Simplified model options in dropdowns.
-    - **AI Service (`src/services/aiService.ts`):** Updated model types.
-    - **Background Script (`src/background/background.ts`):** Removed logic for simplified models.
-- **Cleaned Up Two-Step AI Implementation (Previous):**
-    - **Popup Component (`src/components/Popup.tsx`):** Removed cost state and display logic.
-    - **AI Service (`src/services/aiService.ts`):** Removed cost fields/logic.
-    - **Background Script (`src/background/background.ts`):** Removed Gemini `safetySettings` and cost logic/fields.
-- **Refactored AI Interaction to Two-Step Process with Model Selection (Initial):**
+
+- **Simplified Two-Step AI Implementation:** (Still relevant)
+    - **Popup Component (`frontend/ethical-shopper-extension/src/components/Popup.tsx`):** Simplified model options in dropdowns.
+    - **AI Service (`frontend/ethical-shopper-extension/src/services/aiService.ts`):** Updated model types (now used by backend).
+
+- **Cleaned Up Two-Step AI Implementation (Previous):** (Still relevant)
+    - **Popup Component (`frontend/ethical-shopper-extension/src/components/Popup.tsx`):** Removed cost state and display logic.
+    - **AI Service (`frontend/ethical-shopper-extension/src/services/aiService.ts`):** Removed cost fields/logic.
+    - **Background Script (`frontend/ethical-shopper-extension/src/background/background.ts`):** Removed Gemini `safetySettings` and cost logic/fields.
+
+- **Refactored AI Interaction to Two-Step Process with Model Selection (Initial):** (Still relevant, but now backend handles the core logic)
     - Split prompts (`productIdentificationPrompt`, `ethicalAlternativesPrompt`).
-    - Refactored `aiService.ts` (`callAIModel`, types, timing).
-    - Refactored `background.ts` (message handling, routing, timing). Installed `openai`.
-    - Updated `config.ts` (`OPENAI_API_KEY`). Verified Webpack config.
-    - Overhauled `Popup.tsx` (UI, state, handlers).
+    - Refactored `aiService.ts` (`callAIModel`, types, timing - now handles fetch calls).
+    - Refactored `background.ts` (message handling, routing, timing - now minimal). Installed `openai` (now in backend).
+    - Updated `config.ts` (`OPENAI_API_KEY` - now in backend, `BACKEND_API_URL` added). Verified Webpack config (updated for new structure).
+    - Overhauled `Popup.tsx` (UI, state, handlers - unchanged as `aiService` signature is same).
     - Added styles (`styles.scss`).
-- **Optimized AI Context with HTML Minification & Markdown Conversion:** (Helper function still relevant)
-- **Added Global Pause/Unpause Feature:** (Still relevant)
+
+- **Optimized AI Context with HTML Minification & Markdown Conversion:** (Helper function still relevant in frontend)
+- **Added Global Pause/Unpause Feature:** (Still relevant, handled in frontend background script)
 - **Added Conditional Rendering & Dismiss for Content Script Popup:** (Still relevant)
 - **Updated Content Script to Render Full Popup:** (Still relevant)
 - **Refactored Content Script to use React:** (Still relevant)
-- **Completed build system conversion from Vite to Webpack:** (Still relevant)
+- **Completed build system conversion from Vite to Webpack:** (Still relevant, config updated for new structure)
+
+:start_line:52
+-------
+- **Added and fixed `npm run start` script for backend:**
+    - Configured `backend/package.json` to include a start script.
+    - Added `"type": "module"` to `backend/package.json` to enable ES module support.
+    - Created `backend/tsconfig.json` with `moduleResolution: "nodenext"` and `module: "NodeNext"` for TypeScript compilation in an ES module environment.
+    - Updated the `start` script in `backend/package.json` to use `ts-node-dev --respawn --transpile-only src/index.ts` for automatic restarts and console output during development.
+    - Added an `asyncHandler` wrapper in `backend/src/index.ts` and applied it to the route handlers to resolve TypeScript type mismatch errors.
+    - Explicitly typed the `item` parameter in a `.find()` call in `backend/src/index.ts` to resolve an implicit any error.
+
+- **Created backend README:** Generated `backend/README.md` providing context, setup instructions, running commands, and API endpoint details for the backend service.
+
+:start_line:63
+-------
+- **Implemented CORS:** Installed and configured the `cors` middleware in the backend to allow cross-origin requests from the frontend, resolving the CORS policy error.
+
+- **Improved Backend API Implementation:**
+    - Implemented Gemini grounding parameters for the 'gemini-flash-2.0-grounded' model using Google Search Retrieval.
+    - Fixed TypeScript errors and improved error handling throughout `backend/src/index.ts`.
+    - Enhanced OpenAI response processing with better error handling and fallback methods.
+    - Improved API endpoints with better validation, error handling, and response formatting.
+    - Updated the model configuration for OpenAI's "o3-mini" model.
+    - Updated `.env.example` file with appropriate environment variables.
+    - Added `ts-node-dev` as a development dependency to `backend/package.json` to enable automatic server restarts and console output during development.
+
 
 ## Current Goals
 
-- **Test Two-Step AI Refactoring (Simplified & Optimized):** (Immediate Next Step)
-    - **Build:** Run `npm run build`. Ensure API keys (Google, OpenAI) are correctly set in the `.env` file.
-    - **Load:** Manually load the unpacked extension.
-    - **Navigate:** Go to a checkout page (ideally one that might load content dynamically).
-    - **Step 1 Execution:**
-        - Verify Step 1 dropdown only shows 'gemini-flash-2.0'.
-        - Click "Identify Product".
-        - Verify HTML processing happens now (check console logs if needed).
-        - Verify loading state and execution time display.
-        - Verify product details are displayed correctly.
-        - Test error handling (including HTML processing errors).
-    - **Step 2 Execution:**
-        - Verify Step 2 dropdown only shows 'openai-gpt-o3-mini', 'gemini-flash-2.0-grounded'.
-        - Select a model. Click "Find Alternatives".
-        - Verify loading state and execution time display.
-        - Verify ethical status and alternatives are displayed correctly.
-        - Test error handling (including unimplemented grounding/web search).
+- **Test Backend API:**
+    - Manually test the `/identify-product` and `/find-alternatives` endpoints using a tool like Postman or `curl`.
+    - Ensure API keys are correctly loaded and used in the backend.
+
+- **Test Backend API:**
+    - Manually test the `/identify-product` and `/find-alternatives` endpoints using a tool like Postman or `curl`.
+    - Ensure API keys are correctly loaded and used in the backend.
+
+- **Test Frontend Integration with Backend:**
+    - **Build Frontend:** Run `cd frontend/ethical-shopper-extension && npm run build`. Ensure `BACKEND_API_URL` is correctly injected (e.g., via `.env` in frontend for dev).
+    - **Start Backend:** Run `cd backend && npm run start` (or `ts-node src/index.ts`).
+    - **Load Extension:** Manually load the unpacked extension (from `frontend/ethical-shopper-extension/dist/`).
+    - **Navigate:** Go to a checkout page.
+    - **Step 1 Execution:** Click "Identify Product". Verify the request goes to the backend and the result is displayed correctly in the popup. Test error handling.
+    - **Step 2 Execution:** Click "Find Alternatives". Verify the request goes to the backend and the result is displayed correctly. Test error handling.
     - **Model Switching:** Test switching Step 2 models.
-- **Test Global Pause/Unpause Feature:** (Verify still works)
+
+- **Test Global Pause/Unpause Feature:** (Verify still works in the extension)
 - **Test Conditional Content Script Popup & Dismiss:** (Verify still works)
-- Test overall extension functionality.
+- **Test Extension Functionality:** General manual testing.
+
+- **Enhance AI Features (Backend):**
+    - Implement response streaming for better UX.
+    - Add conversation history support.
+    - Improve response formatting.
+    - Add rate limiting for API calls.
+    - Create AI response templates.
+
+- **Test AI Integration:**
+    - Add unit tests for backend AI logic.
+    - Verify error handling scenarios more thoroughly.
+    - Implement cross-browser testing.
+    - Fix failing tests.
+    - Complete testing UI.
+    - Implement core extension features.
+    - Cross-browser development.
+    - Documentation improvements.
+    - Set up continuous integration workflow.
 
 ## Open Questions
 
-- **Model Implementation:** OpenAI web search for `openai-gpt-o3-mini` is now implemented using `openai.responses.create` and the `web_search_preview_2025_03_11` tool in `background.ts`. Gemini grounding parameters for 'gemini-flash-2.0-grounded' still need implementation.
+- **Model Implementation:** Gemini grounding parameters for 'gemini-flash-2.0-grounded' still need implementation in the backend.
 - **Error Handling:** How should errors from specific models or API key issues be presented to the user more clearly? How should HTML processing errors be handled?
 - **API Key Management:** Is the current `.env` approach sufficient for development? How will keys be managed in production?
 - **Streaming:** Should streaming responses be implemented for either step to improve perceived performance?

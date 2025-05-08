@@ -1,18 +1,33 @@
 ## Work Done
-- **Refactored OpenAI Web Search Implementation (`background.ts`):**
+- **Project Restructuring:**
+    - Created `frontend` and `backend` root directories.
+    - Moved the existing `ethical-shopper-extension` code into the `frontend` directory.
+    - Initialized a Node.js project in the `backend` directory with necessary dependencies (`express`, `openai`, `@google/generative-ai`, `typescript`, `ts-node`, `@types/express`, `dotenv`).
+    - Created `backend/src/index.ts` with basic Express server setup and placeholder API routes (`/identify-product`, `/find-alternatives`).
+
+- **AI Logic Migration to Backend:**
+    - Moved AI client initialization (Gemini, OpenAI) and the core `handleAICall` logic from `frontend/ethical-shopper-extension/src/background/background.ts` to `backend/src/index.ts`.
+    - Modified backend API routes (`/identify-product`, `/find-alternatives`) to utilize the `handleAICall` function.
+    - Configured backend to load API keys from environment variables (`.env`).
+    - Updated frontend `frontend/ethical-shopper-extension/src/config.ts` to include `BACKEND_API_URL`.
+    - Modified frontend `frontend/ethical-shopper-extension/src/services/aiService.ts` to make `fetch` calls to the new backend API endpoints instead of using Chrome runtime messages. Removed old messaging and direct call logic.
+    - Cleaned up `frontend/ethical-shopper-extension/src/background/background.ts` by removing the migrated AI code, leaving only the pause state handling.
+    - Updated frontend `frontend/ethical-shopper-extension/webpack.config.cjs` to reflect the new directory structure and ensure correct handling of environment variables for the frontend.
+
+- **Refactored OpenAI Web Search Implementation (`background.ts`):** (Now in backend)
     - Changed the API call for `openai-gpt-o3-mini` from `openai.chat.completions.create` to `openai.responses.create`.
     - Utilized the `web_search_preview_2025_03_11` tool type within `openai.responses.create` to enable built-in web search functionality.
     - Updated response handling to correctly parse the nested structure (`output` -> `message` -> `content` -> `output_text`) returned by `openai.responses.create`.
-- **Refactored AI Interaction to Two-Step Process (Simplified & Optimized):**
-    - Split prompts into `productIdentificationPrompt` and `ethicalAlternativesPrompt` (`src/constants/prompts.ts`).
-    - Refactored `aiService.ts` with new types (simplified model list), `callAIModel` function, step/model parameters, and timing logic. Removed cost fields/logic.
-    - Refactored `background.ts` to handle `CALL_AI_MODEL` messages, route to allowed API clients (Gemini, OpenAI), manage steps, and return structured `AIResponse` (with timing, no cost). Removed Gemini safety settings, cost logic, and handling for removed models. Installed `openai` package.
-    - Updated `src/config.ts` to include `OPENAI_API_KEY`. Verified `DotenvWebpackPlugin` in `webpack.config.cjs`.
+- **Refactored AI Interaction to Two-Step Process (Simplified & Optimized):** (Frontend parts still relevant, backend now handles core logic)
+    - Split prompts into `productIdentificationPrompt` and `ethicalAlternativesPrompt` (`frontend/ethical-shopper-extension/src/constants/prompts.ts`).
+    - Refactored `aiService.ts` with new types (simplified model list), `callAIModel` function, step/model parameters, and timing logic. Removed cost fields/logic. (Now uses fetch)
+    - Refactored `background.ts` to handle `CALL_AI_MODEL` messages, route to allowed API clients (Gemini, OpenAI), manage steps, and return structured `AIResponse` (with timing, no cost). Removed Gemini safety settings, cost logic, and handling for removed models. Installed `openai` package. (Now minimal)
+    - Updated `src/config.ts` to include `OPENAI_API_KEY`. Verified `DotenvWebpackPlugin` in `webpack.config.cjs`. (Now includes `BACKEND_API_URL`)
     - Overhauled `Popup.tsx` UI and logic for the two-step flow, adding simplified model selection dropdowns, separate buttons, and display areas for results and time per step. Removed cost state and display logic. **Moved HTML processing (`processHtmlForAI`) to occur on Step 1 button click instead of page load.**
-    - Added/adjusted styles for the two-step UI elements in `src/styles.scss`.
+    - Added/adjusted styles for the two-step UI elements in `frontend/ethical-shopper-extension/src/styles.scss`.
 - **Implemented "Show Alternatives" Feature (with Refinements):** (Superseded by two-step refactor)
-- **Optimized AI Context with HTML Minification & Markdown Conversion:** (Helper function still relevant)
-- **Added Global Pause/Unpause Feature:** (Still relevant)
+- **Optimized AI Context with HTML Minification & Markdown Conversion:** (Helper function still relevant in frontend)
+- **Added Global Pause/Unpause Feature:** (Still relevant, handled in frontend background script)
 - **Added Conditional Rendering & Dismiss for Content Script Popup:** (Still relevant)
 - **Updated Content Script to Render Full Popup:** (Still relevant)
 - **Refactored Content Script to use React:** (Still relevant)
@@ -20,74 +35,73 @@
 - Created `productContext.md`
 - Created `activeContext.md`
 - Created `decisionLog.md`
-- **Completed build system conversion from Vite to Webpack:** (Still relevant)
+- **Completed build system conversion from Vite to Webpack:** (Still relevant, config updated for new structure)
 - Fixed extension build configuration issues
 - Added project organization improvements
 - Implemented checkout detection improvements
 - Fixed messaging system issues
 - Configured cross-browser compatibility
 - Implemented AI Integration (Initial Google AI setup)
+:start_line:45
+-------
+- Added and fixed `npm run start` script for backend:
+    - Configured `backend/package.json` to include a start script.
+    - Added `"type": "module"` to `backend/package.json` to enable ES module support.
+    - Created `backend/tsconfig.json` with `moduleResolution: "nodenext"` and `module: "NodeNext"` for TypeScript compilation in an ES module environment.
+    - Updated the `start` script in `backend/package.json` to use `ts-node-dev --respawn --transpile-only src/index.ts` for automatic restarts and console output during development.
+    - Added an `asyncHandler` wrapper in `backend/src/index.ts` and applied it to the route handlers to resolve TypeScript type mismatch errors.
+    - Explicitly typed the `item` parameter in a `.find()` call in `backend/src/index.ts` to resolve an implicit any error.
+- Created backend README (`backend/README.md`).
+- **Improved Backend API Implementation:**
+    - Implemented Gemini grounding parameters for 'gemini-flash-2.0-grounded' model using Google Search Retrieval.
+    - Improved error handling and response structure in both backend API endpoints (`/identify-product` and `/find-alternatives`).
+    - Enhanced OpenAI response processing with structured error handling and fallback methods.
+    - Fixed TypeScript errors in CORS middleware and OpenAI response parsing.
+    - Added proper JSON validation for incoming requests and responses.
+    - Improved API endpoint request validation, logging, and error reporting.
+    - Updated `.env.example` file with all required environment variables.
+    - Fixed model configuration for OpenAI's "o3-mini" model.
+    - Enhanced CORS configuration to properly handle requests from localhost and Chrome extensions.
+    - Fixed path-to-regexp error by simplifying CORS configuration.
+    - Added `ts-node-dev` as a development dependency to `backend/package.json` and installed it to enable automatic server restarts and console output during development.
 
 ## Next Steps
 
-- **Test Two-Step AI Refactoring (Simplified & Optimized):** (Immediate Next Step)
-    - **Build:** Run `npm run build`. Ensure API keys (Google, OpenAI) are correctly set in the `.env` file.
-    - **Load:** Manually load the unpacked extension (from `dist/`).
-    - **Navigate:** Go to a checkout page (ideally one that might load content dynamically).
-    - **Step 1 Execution:**
-        - Verify Step 1 dropdown only shows 'gemini-flash-2.0'.
-        - Click "Identify Product".
-        - Verify HTML processing happens now (check console logs if needed).
-        - Verify loading state and execution time display.
-        - Verify product details are displayed correctly.
-        - Test error handling (including HTML processing errors).
-    - **Step 2 Execution:**
-        - Verify Step 2 dropdown only shows 'openai-gpt-o3-mini', 'gemini-flash-2.0-grounded'.
-        - Select a model. Click "Find Alternatives".
-        - Verify loading state and execution time display.
-        - Verify ethical status and alternatives are displayed correctly.
-        - Test error handling (including unimplemented grounding/web search).
+- **Test Backend API:**
+    - Manually test the `/identify-product` and `/find-alternatives` endpoints using a tool like Postman or `curl`.
+    - Ensure API keys are correctly loaded and used in the backend.
+
+- **Test Backend API:**
+    - Manually test the `/identify-product` and `/find-alternatives` endpoints using a tool like Postman or `curl`.
+    - Ensure API keys are correctly loaded and used in the backend.
+
+- **Test Frontend Integration with Backend:**
+    - **Build Frontend:** Run `cd frontend/ethical-shopper-extension && npm run build`. Ensure `BACKEND_API_URL` is correctly injected (e.g., via `.env` in frontend for dev).
+    - **Start Backend:** Run `cd backend && npm run start` (or `ts-node src/index.ts`).
+    - **Load Extension:** Manually load the unpacked extension (from `frontend/ethical-shopper-extension/dist/`).
+    - **Navigate:** Go to a checkout page.
+    - **Step 1 Execution:** Click "Identify Product". Verify the request goes to the backend and the result is displayed correctly in the popup. Test error handling.
+    - **Step 2 Execution:** Click "Find Alternatives". Verify the request goes to the backend and the result is displayed correctly. Test error handling.
     - **Model Switching:** Test switching Step 2 models.
-- **Test Global Pause/Unpause Feature:** (Verify still works)
+
+- **Test Global Pause/Unpause Feature:** (Verify still works in the extension)
 - **Test Conditional Content Script Popup & Dismiss:** (Verify still works)
 - **Test Extension Functionality:** General manual testing.
-- **Implement Missing AI Features:**
-    - **OpenAI:** Web search for `openai-gpt-o3-mini` is now implemented using `openai.responses.create` and the `web_search_preview_2025_03_11` tool. Further refinement or alternative methods (like Assistants API) could be explored if needed.
-    - **Gemini:** Implement grounding parameters for 'gemini-flash-2.0-grounded'.
-- **Enhance AI Features:**
+
+- **Enhance AI Features (Backend):**
     - Implement response streaming for better UX.
     - Add conversation history support.
     - Improve response formatting.
     - Add rate limiting for API calls.
     - Create AI response templates.
+
 - **Test AI Integration:**
-    - Add unit tests for AI service (`aiService.ts`).
-    - Test environment detection logic.
+    - Add unit tests for backend AI logic.
     - Verify error handling scenarios more thoroughly.
-    - Test message passing in extension.
-    - Validate API response handling.
-- **Implement cross-browser testing:**
-    - Set up Firefox testing environment.
-    - Test Edge-specific functionality.
-    - Verify Safari compatibility.
-    - Document browser-specific differences.
-- **Fix failing tests:** (If any)
-- **Complete testing UI:** (Dev UI)
-- **Implement core extension features:**
-    - Refine checkout page detection logic.
-    - Enhance user interface interactions.
-- **Cross-browser development:**
-    - Create browser-specific build configurations.
-    - Implement fallbacks for unsupported APIs.
-    - Test messaging system across browsers.
-- **Documentation improvements:**
-    - Add browser compatibility notes.
-    - Document Webpack build process.
-    - Create deployment guides.
-    - Update AI integration documentation (two-step flow, simplified model selection, timing, on-demand HTML processing).
-    - Document environment setup (`.env`).
-- **Set up continuous integration workflow:**
-    - Add multi-browser testing pipeline.
-    - Implement automated compatibility checks.
-    - Set up separate build targets per browser.
-    - Add API key security checks.
+    - Implement cross-browser testing.
+    - Fix failing tests.
+    - Complete testing UI.
+    - Implement core extension features.
+    - Cross-browser development.
+    - Documentation improvements.
+    - Set up continuous integration workflow.

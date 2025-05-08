@@ -49,8 +49,11 @@ module.exports = {
     ],
   },
   plugins: [
-    // Handles .env file
-    new DotenvWebpackPlugin(),
+    // Handles .env file - specify context to look in the frontend directory
+    new DotenvWebpackPlugin({
+        path: path.resolve(__dirname, '.env'), // Look for .env in the frontend directory
+        systemvars: true, // Allow system variables to override
+    }),
 
     // Copies manifest.json and static assets
     new CopyWebpackPlugin({
@@ -83,7 +86,7 @@ module.exports = {
       directory: path.join(__dirname, 'dist'), // Serve files from dist
     },
     compress: true,
-    port: 3000, // Or another port if 3000 is taken
+    port: 3001, // Or another port if 3000 is taken
     hot: true, // Enable Hot Module Replacement
     open: true, // Open browser automatically
     // Serve index.html for the dev entry point

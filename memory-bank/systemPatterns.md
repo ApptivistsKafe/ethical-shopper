@@ -1,67 +1,119 @@
 ## System Architecture
 
+### Project Structure
+
+```
+/
+├── backend/
+│   ├── src/
+│   │   └── index.ts         # Node.js Express server with AI API endpoints
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── .env                 # Backend environment variables (including API keys)
+└── frontend/
+    └── ethical-shopper-extension/
+        ├── public/
+        │   └── assets/
+        │       └── icon16.png
+        ├── src/
+        │   ├── background/
+        │   │   └── background.ts  # Minimal background script (pause state)
+        │   ├── components/
+        │   │   └── Popup.tsx      # React UI component
+        │   ├── constants/
+        │   │   └── prompts.ts     # AI prompts
+        │   ├── content/
+        │   │   └── content.tsx    # Content script (injects Popup)
+        │   ├── dev/
+        │   │   ├── index.html
+        │   │   └── main.tsx       # Development entry point
+        │   ├── services/
+        │   │   ├── aiService.ts   # Frontend service to call backend AI API
+        │   │   └── checkoutDetector.ts # Checkout detection logic
+        │   ├── types/
+        │   │   └── index.d.ts     # TypeScript type definitions
+        │   ├── config.ts          # Frontend configuration (including backend URL)
+        │   └── styles.scss        # SCSS styles
+        ├── test/
+        │   └── ...                # Frontend tests
+        ├── .eslintrc.js
+        ├── .gitignore
+        ├── .prettierrc.js
+        ├── manifest.json          # Extension manifest
+        ├── package-lock.json
+        ├── package.json           # Frontend dependencies and scripts
+        ├── README.md
+        ├── tsconfig.json
+        └── webpack.config.cjs     # Frontend build configuration
+```
+
 ### Core Components
 
-1. Extension Components
-   - Popup (`Popup.tsx`): User interface for checkout detection status, AI model selection (Step 1: Gemini Flash; Step 2: O3 Mini, Gemini Grounded Flash), triggering AI steps, and displaying results (identified product, ethical analysis, alternatives, timing).
-   - Background Service (`background.ts`): Manages extension state (e.g., pause), initializes and manages AI API clients (Gemini, OpenAI), handles structured AI call messages (`CALL_AI_MODEL`), routes requests to the appropriate AI model/API (Gemini Flash, `openai.responses.create` with `web_search_preview_2025_03_11` tool for O3 Mini, Gemini Grounded Flash), performs timing, returns structured responses (without cost). Handles the nested array output from `openai.responses.create` to extract text content.
-   - Content Scripts (`content.tsx`): Injects Popup on checkout pages, potentially performs initial checkout check via messaging.
-   - Development UI (`src/dev/`): Testing interface (current focus is checkout detection, could be expanded).
+1. Backend Service (`backend/src/index.ts`)
+   - Node.js Express server.
+   - Hosts API endpoints for AI interactions (`/identify-product`, `/find-alternatives`).
+   - Initializes and manages AI API clients (Gemini, OpenAI).
+   - Contains the core logic for calling external AI models (`handleAICall`).
+   - Loads AI API keys from backend environment variables (`.env`).
 
-2. Services
-   - `checkoutDetector.ts`: Core checkout page detection logic (URL patterns, DOM analysis, caching, storage abstraction).
-   - `aiService.ts`: Acts as a facade/service layer for the frontend (`Popup.tsx`) to interact with the AI backend. Detects environment (extension vs. direct), formats requests for the background script (`CALL_AI_MODEL` message) or makes direct calls (limited), exports HTML processing function (`processHtmlForAI`), defines shared types (simplified model list) for AI requests/responses (without cost fields).
+2. Frontend Extension (`frontend/ethical-shopper-extension/`)
+   - **Popup (`src/components/Popup.tsx`):** User interface for checkout detection status, AI model selection, triggering AI steps, and displaying results (identified product, ethical analysis, alternatives, timing). Communicates with the backend API via `aiService.ts`.
+   - **Background Service (`src/background/background.ts`):** Minimal script primarily handling extension state (e.g., pause). No longer handles AI API calls directly.
+   - **Content Scripts (`src/content/content.tsx`):** Injects Popup on checkout pages.
+   - **AI Service (`src/services/aiService.ts`):** Acts as a facade/service layer for the frontend UI to interact with the backend AI API. Uses `fetch` to make HTTP requests to the backend endpoints. Handles request formatting and response parsing.
+   - **Checkout Detector (`src/services/checkoutDetector.ts`):** Core checkout page detection logic (URL patterns, DOM analysis, caching, storage abstraction).
+   - **Development UI (`src/dev/`):** Testing interface.
 
 ### Design Patterns
 
 1. Adapter Pattern
-   - Storage abstraction for different environments
-   - Common interface for chrome.storage and development storage
-   - Seamless switching between implementations
+   - Storage abstraction for different environments (in `checkoutDetector.ts`).
+   - Common interface for chrome.storage and development storage.
+   - Seamless switching between implementations.
 
 2. Strategy Pattern
    - Multiple detection strategies (URL patterns, DOM analysis) in `checkoutDetector`.
    - Multiple AI models selectable for Step 2 (alternatives: O3 Mini, Gemini Grounded Flash) - allows choosing different strategies for AI analysis. Step 1 uses a single defined model (Gemini Flash).
-   - Background script routes to different AI API implementation strategies based on user selection.
+   - Backend routes to different AI API implementation strategies based on user selection.
 
 3. Observer Pattern
-   - Real-time UI updates based on detection results
-   - Asynchronous page analysis
-   - State management in development UI
+   - Real-time UI updates based on detection results.
+   - Asynchronous page analysis.
+   - State management in development UI.
 
 4. Factory Pattern (Potential)
    - Document creation for testing.
    - Storage implementation selection.
    - Test data generation.
-   - Potentially used implicitly in background script for selecting/instantiating AI model clients based on configuration/request.
+   - Potentially used implicitly in backend for selecting/instantiating AI model clients.
+
 5. Facade Pattern
-   - `aiService.ts` provides a simplified interface (`callAIModel`) for the `Popup.tsx` to interact with the complex underlying AI request handling (environment detection, messaging vs. direct calls, parameter formatting).
-6. Command Pattern (Messaging)
-   - Structured messages (`CALL_AI_MODEL` with parameters like `step`, `modelName`, etc.) sent from `aiService.ts` to `background.ts` encapsulate AI requests as objects.
+   - `aiService.ts` provides a simplified interface (`callAIModel`) for the `Popup.tsx` to interact with the backend AI API.
 
 ### Development Patterns
 
 1. Test-First Development
-   - Comprehensive test coverage
-   - Behavior-driven development
-   - Isolated component testing
+   - Comprehensive test coverage.
+   - Behavior-driven development.
+   - Isolated component testing.
 
 2. Environment-Aware Architecture
-   - Development vs Production modes
-   - Mock implementations for browser APIs
-   - Testing-friendly abstractions
-
+   - Development vs Production modes.
+   - Mock implementations for browser APIs.
+   - Testing-friendly abstractions.
+   - Separate frontend and backend environments with distinct configurations.
 
 3. Build System (Webpack)
-   - Uses Webpack for bundling TypeScript, React, and SCSS.
-   - Configuration (`webpack.config.cjs`) handles:
+   - Uses Webpack for bundling frontend assets (TypeScript, React, SCSS).
+   - Configuration (`frontend/ethical-shopper-extension/webpack.config.cjs`) handles:
      - Multiple entry points (popup, content, background, dev).
      - TypeScript compilation (`ts-loader`).
      - SCSS/CSS processing (`sass-loader`, `css-loader`, `style-loader`).
      - HTML generation (`HtmlWebpackPlugin`).
      - Static asset copying (`CopyWebpackPlugin`).
-     - Environment variable injection (`DotenvWebpackPlugin`).
+     - Environment variable injection (`DotenvWebpackPlugin`) for frontend config (like backend URL).
    - Separate configurations for development (with `webpack-dev-server`) and production.
+
 ### Data Flow
 
 1. Checkout Detection
@@ -82,41 +134,45 @@
        C -- Yes --> D(Inject Popup);
        C -- No --> E(Do Nothing);
    ```
+
 4. Extension Flow (AI Analysis - Two Step)
    ```mermaid
     graph LR
-        subgraph Popup UI
-            P1[Select Step 1 Model]
-            P2[Click Identify Product]
-            P2_HTML[Get Page HTML]
-            P2_MD[Call processHtmlForAI]
-            P3[Display Step 1 Result/Time]
-            P4[Select Step 2 Model]
-            P5[Click Find Alternatives]
-            P6[Display Step 2 Result/Time]
+        subgraph Frontend (Extension)
+            subgraph Popup UI
+                P1[Select Step 1 Model]
+                P2[Click Identify Product]
+                P2_HTML[Get Page HTML]
+                P2_MD[Call processHtmlForAI]
+                P3[Display Step 1 Result/Time]
+                P4[Select Step 2 Model]
+                P5[Click Find Alternatives]
+                P6[Display Step 2 Result/Time]
+            end
+            subgraph aiService.ts
+                S1[callAIModel(Step 1 params w/ Markdown)]
+                S3[Send HTTP POST to Backend /identify-product]
+                S4[Receive Step 1 Response]
+                S5[callAIModel(Step 2 params)]
+                S6[Send HTTP POST to Backend /find-alternatives]
+                S7[Receive Step 2 Response]
+                %% processHtmlForAI is called by Popup directly
+            end
         end
 
-        subgraph aiService.ts
-            S1[callAIModel(Step 1 params w/ Markdown)]
-            S3[Send CALL_AI_MODEL msg]
-            S4[Receive Step 1 Response]
-            S5[callAIModel(Step 2 params)]
-            S6[Send CALL_AI_MODEL msg]
-            S7[Receive Step 2 Response]
-            %% processHtmlForAI is now called by Popup directly
-        end
-
-        subgraph background.ts
-            B1[Receive CALL_AI_MODEL msg (Step 1 w/ Markdown)]
-            B2{Route to Model API (Step 1)}
-            B3[Call External AI API 1]
-            B4[Format Step 1 Response (Data/Time)]
-            B5[Send Step 1 Response]
-            B6[Receive CALL_AI_MODEL msg (Step 2)]
-            B7{Route to Model API (Step 2)}
-            B8[Call External AI API 2 (e.g., openai.responses.create w/ web search if O3 Mini selected)]
-            B9[Format Step 2 Response (Data/Time)]
-            B10[Send Step 2 Response]
+        subgraph Backend (Node.js Server)
+            subgraph index.ts
+                B1[Receive /identify-product Request]
+                B2[Call handleAICall (Step 1)]
+                B3[Call External AI API 1]
+                B4[Format Step 1 Response (Data/Time)]
+                B5[Send Step 1 Response (JSON)]
+                B6[Receive /find-alternatives Request]
+                B7[Call handleAICall (Step 2)]
+                B8[Call External AI API 2]
+                B9[Format Step 2 Response (Data/Time)]
+                B10[Send Step 2 Response (JSON)]
+            end
         end
 
         P1 --> P2;
@@ -148,16 +204,18 @@
 ### Best Practices
 
 1. Error Handling
-   - Graceful degradation
-   - Detailed error logging
-   - User-friendly error states
+   - Graceful degradation.
+   - Detailed error logging (both frontend and backend).
+   - User-friendly error states in the frontend.
 
 2. Performance
-   - Result caching
-   - Efficient DOM traversal
-   - Minimal storage operations
+   - Result caching (in frontend `checkoutDetector`).
+   - Efficient DOM traversal (in frontend `processHtmlForAI`).
+   - Minimal storage operations.
+   - Backend handles potentially long-running AI calls, keeping frontend responsive.
 
 3. Testing
-   - Isolated component tests
-   - Integration testing
-   - Real-world scenario validation
+   - Isolated component tests (frontend).
+   - Integration testing (frontend calling backend).
+   - Unit tests for backend AI logic.
+   - Real-world scenario validation.
