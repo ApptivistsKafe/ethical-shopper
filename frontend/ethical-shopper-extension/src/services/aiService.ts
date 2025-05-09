@@ -3,9 +3,7 @@ import { config } from '../config';
 
 // --- Types ---
 // Consider moving these to a central types file (e.g., src/types/index.d.ts) later
-export type StepOneModel = 'gemini-flash-2.0'; // Only allowed Step 1 model
-export type StepTwoModel = 'openai-gpt-o3-mini' | 'gemini-flash-2.0-grounded'; // Only allowed Step 2 models
-export type ModelName = StepOneModel | StepTwoModel; // Combined type
+export type ModelName = string; // Combined type
 
 export interface AIResponse {
     data: string; // The actual text/JSON response from the model
@@ -141,7 +139,7 @@ export const generateAIResponse = async (prompt: string, pageHtml?: string): Pro
     const pageMarkdown = pageHtml ? processHtmlForAI(pageHtml) : undefined;
     const result = await callAIModel({
         step: 1,
-        modelName: 'gemini-flash-2.0', // Default old behavior
+        modelName: 'google/gemini-2.0-flash-lite-001', // Default old behavior
         basePrompt: prompt, // Treat old prompt as base prompt for step 1
         pageMarkdown: pageMarkdown,
     });

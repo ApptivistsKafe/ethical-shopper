@@ -1,7 +1,7 @@
 // Step 1: Identify the product on the page
 export const productIdentificationPrompt = `Analyze the provided page content (Markdown format). Identify the primary product the user seems to be viewing or intending to purchase.
 
-The only output should be a stringified JSON object representing the identified product. No extra text, no newlines, no preceding identifiers. The first character should be '{' and the last should be '}'.
+The only output should be a JSON object representing the identified product. No extra text, no newlines, no preceding identifiers. The first character should be '{' and the last should be '}'.
 
 Return a single JSON object with the following keys. Ensure all string values are properly escaped within the JSON.
 
