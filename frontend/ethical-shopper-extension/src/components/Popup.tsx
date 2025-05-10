@@ -48,7 +48,7 @@ interface PopupProps {
 // --- Model Options ---
 // Only include models explicitly requested by the user
 const stepOneModels: string[] = ['google/gemini-2.0-flash-lite-001']; // Only Gemini Flash for Step 1
-const stepTwoModels: string[] = ['openai-gpt-o3-mini', 'gemini-flash-2.0-grounded']; // Only O3 Mini and Grounded Gemini Flash for Step 2
+const stepTwoModels: string[] = ['google/gemini-2.0-flash-lite-001']; // Only O3 Mini and Grounded Gemini Flash for Step 2
 
 export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScriptContext, onDismiss }) => {
   // --- State ---

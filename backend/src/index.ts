@@ -282,8 +282,8 @@ app.post(
       console.log("Received request to find alternatives.");
 
       // Validate required parameters
-      const { productDetails, basePrompt, string } = req.body;
-      if (!productDetails || !basePrompt || !string) {
+      const { productDetails, basePrompt, modelName } = req.body;
+      if (!productDetails || !basePrompt || !modelName) {
         return res.status(400).json({
           success: false,
           error:
@@ -305,29 +305,15 @@ app.post(
         });
       }
 
-      // Validate string for Step 2
-      const allowedStepTwoModels: string[] = [
-        "openai-gpt-o3-mini",
-        "gemini-flash-2.0-grounded",
-      ];
-      if (!allowedStepTwoModels.includes(string)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid string for find-alternatives. Expected one of ${allowedStepTwoModels.join(
-            ", "
-          )}. Received: ${string}`,
-        });
-      }
-
       // Log parameters for debugging
       console.log(
-        `Using model: ${string}, prompt length: ${basePrompt.length}, product details length: ${productDetails.length}`
+        `Using model: ${modelName}, prompt length: ${basePrompt.length}, product details length: ${productDetails.length}`
       );
 
       // Make the AI call
       const aiResponse = await handleAICall({
         step: 2,
-        modelName: string, // Cast after validation
+        modelName: modelName,
         basePrompt: basePrompt,
         identifiedProductJson: productDetails,
       });
