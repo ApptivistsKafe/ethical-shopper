@@ -29,13 +29,23 @@ interface EthicalProduct {
   brand: string;
   price: string;
   purchaseLink: string; // Link to buy the alternative
+  description: string;
+  url: string;
+  title: string;
 }
 
-interface EthicalAnalysisResult {
+export type EthicalAnalysisResult = {
+  name: string;
+  brand: string;
+  company: string; // Selling site
+  price: number;
+  thumbnail: string; // URL of the product image
+  purchaseLink: string; // Link to buy the alternative
   ethicalStatus: string; // Description of original product/company ethics
-  ethicalAlternatives?: CompanyAlternative[]; // More ethical companies
-  comparableProducts?: EthicalProduct[]; // Specific product alternatives
-}
+  title: string;
+  description: string;
+  url: string;
+}[];
 
 // --- Component Props ---
 interface PopupProps {
@@ -70,7 +80,7 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   const [selectedStepTwoModel, setselectedStepTwoModel] = useState<string>(stepTwoModels[0]);
   const [stepTwoLoading, setStepTwoLoading] = useState(false);
   const [stepTwoError, setStepTwoError] = useState<string | null>(null);
-  const [ethicalAnalysisResult, setEthicalAnalysisResult] = useState<EthicalAnalysisResult | null>(null);
+  const [ethicalAnalysisResult, setEthicalAnalysisResult] = useState<EthicalAnalysisResult | null>([]);
   const [stepTwoTimeMs, setStepTwoTimeMs] = useState<number | null>(null);
   // Removed stepTwoCost state
 
@@ -256,18 +266,15 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
 
         // Attempt to parse the JSON response for Step 2
         try {
-             // Basic check for JSON structure before parsing
-            const trimmedData = response.data.trim();
-            if (trimmedData.startsWith('{') && trimmedData.endsWith('}')) {
-                const parsedData: EthicalAnalysisResult = JSON.parse(trimmedData);
-                 // TODO: Add more robust validation if needed
-                setEthicalAnalysisResult(parsedData);
-            } else {
-                 throw new Error('AI response for Step 2 is not a valid JSON object.');
-            }
+          if (response?.data) {
+            setEthicalAnalysisResult(response.data as EthicalAnalysisResult);
+          } else {
+            setStepTwoError("No data received from AI for Step 2.");
+            setEthicalAnalysisResult(null);
+          }
         } catch (parseError: any) {
             console.error('Error parsing Step 2 JSON response:', parseError, 'Raw response:', response.data);
-            setStepTwoError(`Failed to parse alternatives data from AI: ${parseError.message}. Raw: ${response.data}`);
+            setStepTwoError(`Failed to parse alternatives data from AI: ${parseError.message}. Raw: ${response?.data}`);
             setEthicalAnalysisResult(null);
         }
 
@@ -400,57 +407,25 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
             {stepTwoError && <div className="error-message">{stepTwoError}</div>}
             {renderTime(stepTwoTimeMs)}
 
-            {ethicalAnalysisResult && !stepTwoLoading && (
-                <div className="step-result alternatives-section"> {/* Re-use alternatives-section class */}
-                    <h4>Ethical Analysis & Alternatives:</h4>
-                    <div className="original-product-analysis"> {/* Re-use class */}
-                         <p><strong>Ethical Status Summary:</strong> {ethicalAnalysisResult.ethicalStatus || 'No analysis available.'}</p>
-                    </div>
-
-                    {/* Display Company Alternatives if available */}
-                    {ethicalAnalysisResult.ethicalAlternatives && ethicalAnalysisResult.ethicalAlternatives.length > 0 && (
-                        <div className="ethical-companies-list">
-                             <h5>More Ethical Companies Suggested:</h5>
-                             {ethicalAnalysisResult.ethicalAlternatives.map((comp, idx) => (
-                                <div key={idx} className="company-alternative">
-                                    {comp.logoThumbnail && <img src={comp.logoThumbnail} alt={comp.name} className="company-logo-small"/>}
-                                    <div>
-                                        <strong>{comp.name}</strong>: {comp.reasoning}
-                                    </div>
-                                </div>
-                             ))}
-                        </div>
-                    )}
-
-                    {/* Display Product Alternatives */}
-                    {ethicalAnalysisResult.comparableProducts && ethicalAnalysisResult.comparableProducts.length > 0 ? (
-                        <div className="ethical-alternatives-list"> {/* Re-use class */}
-                          <h5>Suggested Alternative Products:</h5>
-                          {ethicalAnalysisResult.comparableProducts.map((alt, altIndex) => (
-                            <a
-                              key={altIndex}
-                              href={alt.purchaseLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="alternative-product-link"
-                            >
-                              <div className="alternative-product">
-                                {alt.thumbnail && (
-                                  <img src={alt.thumbnail} alt={alt.name} className="alternative-thumbnail" />
-                                )}
-                                <div className="alternative-details">
-                                  <p><strong>{alt.name}</strong></p>
-                                  <p>Brand: {alt.brand}, Sold By: {alt.company}</p>
-                                  <p>Price: {alt.price}</p>
-                                </div>
-                              </div>
-                            </a>
-                          ))}
-                        </div>
-                      ) : (
-                         <p><em>No specific alternative products found.</em></p>
-                      )}
-                </div>
+            {ethicalAnalysisResult && ethicalAnalysisResult.length > 0 && !stepTwoLoading && (
+              <div className="step-result alternatives-section">
+                <h4>Ethical Analysis & Alternatives:</h4>
+                {ethicalAnalysisResult.map((result, index) => (
+                  <div key={index} className="ethical-product">
+                    <h5>{result.name}</h5>
+                    <img src={result.thumbnail} alt={result.name} style={{ width: '100px', height: '100px' }} />
+                    <p>Brand: {result.brand}</p>
+                    <p>Company: {result.company}</p>
+                    <p>Price: {result.price}</p>
+                    <p>Ethical Status: {result.ethicalStatus}</p>
+                    <p>Title: {result.title}</p>
+                    <p>Description: {result.description}</p>
+                    <a href={result.url} target="_blank" rel="noopener noreferrer">
+                      Product URL
+                    </a>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

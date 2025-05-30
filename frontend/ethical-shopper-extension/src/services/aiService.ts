@@ -5,8 +5,11 @@ import { config } from '../config';
 // Consider moving these to a central types file (e.g., src/types/index.d.ts) later
 export type ModelName = string; // Combined type
 
+export type JSON = {
+  [key: string]: any;
+};
 export interface AIResponse {
-    data: string; // The actual text/JSON response from the model
+    data: JSON; // The actual text/JSON response from the model
     timeMs: number; // Execution time in milliseconds
 }
 
@@ -125,7 +128,7 @@ export const callAIModel = async (params: AIRequestParams): Promise<AIResponse> 
     const endTime = performance.now();
     console.error(`Error calling backend API ${endpoint}:`, error);
     return {
-        data: `[Failed to get AI response from backend: ${error instanceof Error ? error.message : String(error)}]`,
+        data: {message:`[Failed to get AI response from backend: ${error instanceof Error ? error.message : String(error)}]`},
         timeMs: Math.round(endTime - startTime), // Return frontend roundtrip time on error
     };
   }
@@ -133,7 +136,7 @@ export const callAIModel = async (params: AIRequestParams): Promise<AIResponse> 
 
 // Deprecate or remove the old function
 /** @deprecated Use callAIModel instead */
-export const generateAIResponse = async (prompt: string, pageHtml?: string): Promise<string> => {
+export const generateAIResponse = async (prompt: string, pageHtml?: string): Promise<JSON> => {
     console.warn("generateAIResponse is deprecated. Use callAIModel instead.");
     // Basic fallback to mimic old behavior using new structure (Step 1, default model)
     const pageMarkdown = pageHtml ? processHtmlForAI(pageHtml) : undefined;

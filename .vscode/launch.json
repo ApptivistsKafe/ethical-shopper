@@ -30,7 +30,7 @@
       "name": "tsx",
       "type": "node",
       "request": "launch",
-
+      "envFile": "${workspaceFolder}/backend/.env",
       "program": "backend/src/index.ts",
       "runtimeExecutable": "${workspaceRoot}/backend/node_modules/.bin/tsx",
       "console": "integratedTerminal",

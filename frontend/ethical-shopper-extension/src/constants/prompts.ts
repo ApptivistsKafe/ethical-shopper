@@ -42,10 +42,9 @@ Return a single JSON object with the following keys. Ensure all string values ar
 3.  \`comparableProducts\`: An array of specific alternative *products*. Aim for up to 3, but fewer is acceptable. Each product should include:
     *   \`name\`: Alternative product name.
     *   \`brand\`: Alternative product brand.
-    *   \`company\`: Company/site selling the alternative.
+    *   \`company\`: parent company of the alternative brand, if applicable.
     *   \`price\`: Price of the alternative.
-    *   \`thumbnail\`: Direct URL of the alternative product's thumbnail image.
-    *   \`purchaseLink\`: Direct, valid, and accessible URL to purchase the alternative product. Double-check all links.
+    *   \`ethicalStatus\`: A brief description of the perceived ethical standing of the alternative brand and parent company (if applicable), including reasons.
 
 Make sure that all URLs provided (thumbnails, purchase links, logos) are REAL, accessible, and likely seen during training or verifiable via web search if the model has that capability.
 
@@ -67,10 +66,8 @@ interface CompanyAlternative {
 interface EthicalProduct {
   name: string;
   thumbnail: string; // URL of the product image
-  company: string; // Selling site for the alternative
   brand: string;
-  price: string;
-  purchaseLink: string; // Link to buy the alternative
+  ethicalStatus: A brief description of the perceived ethical standing of the alternative brand, including reasons.
 }
 \`\`\`
 `;

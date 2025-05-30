@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import cors from "cors";
+import amazonScraper from "amazon-buddy";
 
 // Load environment variables
 dotenv.config();
@@ -54,8 +55,7 @@ interface AIResponse {
 // --- Initialize API Clients ---
 let genAI: GoogleGenerativeAI | null = null;
 let openai: OpenAI = new OpenAI({
-  apiKey:
-    "***REMOVED***",
+  apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
   defaultHeaders: {
     "HTTP-Referer": "Snevil", // Optional. Site URL for rankings on openrouter.ai.
@@ -71,15 +71,6 @@ if (process.env.GOOGLE_AI_API_KEY) {
     "Google AI API Key not found in environment variables. Gemini models will not be available."
   );
 }
-
-// Initialize OpenAI Client
-// if (process.env.OPENAI_API_KEY) {
-//     openai = new OpenAI({
-//         apiKey: process.env.OPENAI_API_KEY,
-//     });
-// } else {
-//     console.warn("OpenAI API Key not found in environment variables. OpenAI models will not be available.");
-// }
 
 // TODO: Initialize DeepSeek client if/when needed and library/API details are known
 
@@ -287,7 +278,7 @@ app.post(
         return res.status(400).json({
           success: false,
           error:
-            "Missing required parameters: productDetails, basePrompt, or string.",
+            "Missing required parameters: productDetails, basePrompt, or modelName.",
         });
       }
 
@@ -320,10 +311,87 @@ app.post(
 
       console.log(`Alternatives found in ${aiResponse.timeMs}ms`);
 
+      // Parse the AI response to extract the list of alternative products
+      let alternatives;
+      try {
+        alternatives = JSON.parse(aiResponse.data)?.comparableProducts;
+        if (!Array.isArray(alternatives)) {
+          throw new Error("AI response is not an array");
+        }
+      } catch (error) {
+        console.error("Error parsing AI response:", error);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to parse AI response",
+        });
+      }
+
+      // Search for each alternative product on Amazon
+      const amazonProducts = [];
+      for (const alternative of alternatives) {
+        try {
+          const productsResponse = await amazonScraper.products({
+            keyword: alternative?.name,
+            number: 1,
+          });
+          const products = productsResponse.result;
+          if (products && products.length > 0) {
+            const product = products[0];
+            if (product.asin) {
+              const productDataResponse = await amazonScraper.asin({
+                asin: product.asin,
+              });
+              const productData = productDataResponse.result?.[0];
+              if (productData) {
+                amazonProducts.push({
+                  ...alternative,
+                  title: productData.title,
+                  thumbnail:
+                    productData.main_image ||
+                    productData.images?.[0] ||
+                    productData.thumbnail ||
+                    "N/A",
+                  price: productData.price?.current_price || "N/A",
+                  description: productData.description || "N/A",
+                  url: productData.url,
+                });
+              }
+            } else {
+              amazonProducts.push({
+                ...alternative,
+                title: product.title,
+                thumbnail: product.thumbnail,
+                price: product.price?.current_price || "N/A",
+                description: product.description || "N/A",
+                url: product.url,
+              });
+            }
+          } else {
+            amazonProducts.push({
+              title: "No product found",
+              thumbnail: "",
+              price: "N/A",
+              description: "No product found",
+              url: "",
+              ...alternative,
+            });
+          }
+        } catch (error) {
+          console.error(`Error searching for ${alternative}:`, error);
+          amazonProducts.push({
+            title: "Error searching for product",
+            thumbnail: "",
+            price: "N/A",
+            description: "Error searching for product",
+            url: "",
+          });
+        }
+      }
+
       // Return successful response
       res.json({
         success: true,
-        data: aiResponse.data,
+        data: amazonProducts,
         timeMs: aiResponse.timeMs,
       });
     } catch (error) {
@@ -337,16 +405,6 @@ app.post(
     }
   })
 );
-
-// Add a basic home route for testing
-app.get("/", (req: Request, res: Response) => {
-  res.json({ message: "Backend API is running" });
-});
-
-// Add a GET endpoint for testing
-app.get("/identify-product", (req: Request, res: Response) => {
-  res.json({ message: "POST to this endpoint to identify a product" });
-});
 
 app.listen(port, () => {
   console.log(`Backend server listening on port ${port}`);
