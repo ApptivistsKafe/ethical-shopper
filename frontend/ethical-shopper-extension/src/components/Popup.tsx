@@ -1,4 +1,5 @@
 import '../style.css';
+import '@mantine/core/styles.css';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     callAIModel,
@@ -7,6 +8,7 @@ import {
 } from '../services/aiService';
 import { isCheckoutPage } from '../services/checkoutDetector';
 import { productIdentificationPrompt, ethicalAlternativesPrompt } from '../constants/prompts';
+import { createTheme, MantineProvider } from '@mantine/core';
 
 // --- Interfaces for AI Responses (matching prompts.ts) ---
 interface IdentifiedProduct {
@@ -54,6 +56,10 @@ interface PopupProps {
   isContentScriptContext?: boolean;
   onDismiss?: () => void;
 }
+
+const theme = createTheme({
+  /** Put your mantine theme override here */
+});
 
 // --- Model Options ---
 // --- Model Options ---
@@ -310,6 +316,7 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   }
 
   return (
+  <MantineProvider theme={theme}>
     <div className="popup" style={{ position: 'relative' }}>
       {/* Dismiss Button */}
       {isContentScriptContext && onDismiss && (
@@ -438,5 +445,6 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
         </div>
       )}
     </div>
+    </MantineProvider>
   );
 };
