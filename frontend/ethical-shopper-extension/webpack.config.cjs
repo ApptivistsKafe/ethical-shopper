@@ -39,6 +39,7 @@ module.exports = {
         use: [
           'style-loader', // Injects styles into DOM
           'css-loader',   // Translates CSS into CommonJS
+          'postcss-loader',
           'sass-loader',  // Compiles Sass to CSS
         ],
       },

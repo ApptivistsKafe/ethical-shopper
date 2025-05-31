@@ -1,6 +1,6 @@
 ## Current Session Context
 
-[Date and time of update: 2025-05-05 02:38 PM EDT]
+[Date and time of update: 2025-05-30 01:18 PM EDT]
 
 ## Recent Changes
 
@@ -89,10 +89,7 @@
 
 ## Current Goals
 
-- **Test Backend API:**
-
-  - Manually test the `/identify-product` and `/find-alternatives` endpoints using a tool like Postman or `curl`.
-  - Ensure API keys are correctly loaded and used in the backend.
+- **Install shadcnui, tailwind, and lucide icons in the frontend portion of the project.**
 
 - **Test Backend API:**
 
@@ -106,7 +103,7 @@
   - **Load Extension:** Manually load the unpacked extension (from `frontend/ethical-shopper-extension/dist/`).
   - **Navigate:** Go to a checkout page.
   - **Step 1 Execution:** Click "Identify Product". Verify the request goes to the backend and the result is displayed correctly in the popup. Test error handling.
-  - **Step 2 Execution:** Click "Find Alternatives". Verify the request goes to the backend and the result is displayed correctly. Test error handling.
+  - **Step 2 Execution:** Click "Find Alternatives". Verify the request goes to the backend and the result is displayed correctly in the popup. Test error handling.
   - **Model Switching:** Test switching Step 2 models.
 
 - **Test Global Pause/Unpause Feature:** (Verify still works in the extension)
