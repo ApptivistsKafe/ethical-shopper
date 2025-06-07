@@ -1,100 +1,12 @@
 .popup {
-  padding: 16px;
-  color: #333333;
-  background-color: white;
-  border: 1px solid black;
 
-  h2 {
-    margin: 0 0 12px;
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 1.4;
-  }
-
-  p {
-    margin: 0 0 16px;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .primary-button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    width: 100%;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: #45a049;
-    }
-
-    &:active {
-      transform: scale(0.98);
-    }
-
-    &:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-  }
-
-  .checkout-detected {
-    text-align: center;
-
-    h2 {
-      color: #4CAF50;
-    }
-  }
-
-  .no-checkout {
-    text-align: center;
-    color: #666666;
-  }
+  // Add max dimensions and scrolling
+  max-width: 450px; // Adjust as needed
+  max-height: 600px; // Adjust as needed
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); // Add some shadow
+  border-radius: 8px; // Rounded corners
   
-  .ai-section {
-    margin: 1rem 0;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-
-    .ai-input {
-      width: 100%;
-      min-height: 60px;
-      max-height: 150px;
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      resize: vertical;
-      font-family: inherit;
-      
-      &:disabled {
-        background-color: #f5f5f5;
-      }
-    }
-
-    .error-message {
-      color: #dc3545;
-      font-size: 0.875rem;
-      margin-top: 0.5rem;
-      padding: 0.5rem;
-    }
-
-    .ai-response {
-      margin-top: 1rem;
-      padding: 1rem;
-      background-color: #f8f9fa;
-      border-radius: 4px;
-      white-space: pre-wrap;
-    }
-  }
-}
-
-
 // --- General UI Enhancements ---
 .dismiss-button {
   position: absolute;
@@ -307,15 +219,6 @@
 
 // --- Alternatives Section Styles ---
 
-.popup {
-  // Add max dimensions and scrolling
-  max-width: 450px; // Adjust as needed
-  max-height: 600px; // Adjust as needed
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); // Add some shadow
-  border-radius: 8px; // Rounded corners
-}
-
 .separator {
   border: none;
   border-top: 1px solid #eee;
@@ -468,6 +371,101 @@
           }
         }
       }
+    }
+  }
+}
+
+  padding: 16px;
+  color: #333333;
+  background-color: white;
+  border: 1px solid black;
+
+  h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  p {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .primary-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #45a049;
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+  }
+
+  .checkout-detected {
+    text-align: center;
+
+    h2 {
+      color: #4CAF50;
+    }
+  }
+
+  .no-checkout {
+    text-align: center;
+    color: #666666;
+  }
+  
+  .ai-section {
+    margin: 1rem 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    .ai-input {
+      width: 100%;
+      min-height: 60px;
+      max-height: 150px;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+      font-family: inherit;
+      
+      &:disabled {
+        background-color: #f5f5f5;
+      }
+    }
+
+    .error-message {
+      color: #dc3545;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    .ai-response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      white-space: pre-wrap;
     }
   }
 }
