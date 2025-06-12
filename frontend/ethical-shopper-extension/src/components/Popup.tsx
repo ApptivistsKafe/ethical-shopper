@@ -346,17 +346,6 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
               loadingStep1={stepOneLoading || initialLoading}
               loadingStep2={stepTwoLoading}
               currentProduct={identifiedProduct || undefined}
-              // currentProduct={identifiedProduct ? {
-              //   name: identifiedProduct.name,
-              //   brand: identifiedProduct.brand,
-              //   sellingCompany: identifiedProduct.sellingCompany,
-              //   price: identifiedProduct.price,
-              //   thumbnail: identifiedProduct.thumbnail,
-              //   ethicalStatus: 'N/A', // Not available from identifiedProduct
-              //   title: identifiedProduct.name, // Using name as title for current product
-              //   description: 'N/A', // Not available from identifiedProduct
-              //   url: '', // Not available from identifiedProduct
-              // } : undefined}
             />
 
           </div>

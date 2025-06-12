@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Image, Text, Badge, Group, Tooltip, HoverCard, Box } from '@mantine/core';
-import { Smile, Meh, ThumbsDown } from 'lucide-react';
+import {Smile, Meh, ThumbsDown, CircleHelp} from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -9,19 +9,28 @@ interface ProductCardProps {
 }
 
 const getEthicalIcon = (status: string) => {
-  if (status.toLowerCase().includes('excellent')) {
-    return <Smile size={14} style={{ color: 'green' }} />;
+// , backgroundColor: 'white'
+//       , backgroundColor: 'lightgreen'
+//       , backgroundColor: 'yellowgreen'
+//       , backgroundColor: 'lightpink'
+//       , backgroundColor: 'orange'
+//       , backgroundColor: 'white'
+  if (!status) {
+    return <CircleHelp size={14} style={{ color: 'grey'}} />;
   }
-  if (status.toLowerCase().includes('good')) {
-    return <Meh size={14} style={{ color: 'yellowgreen' }} />;
+  if (status.toLowerCase().startsWith('excellent')) {
+    return <Smile size={14} style={{ color: 'green'}} />;
   }
-  if (status.toLowerCase().includes('concerning')) {
-    return <ThumbsDown size={14} style={{ color: 'red' }} />;
+  if (status.toLowerCase().startsWith('good')) {
+    return <Meh size={14} style={{ color: 'greenyellow'}} />;
   }
-  if (status.toLowerCase().includes('mixed')) {
-    return <Meh size={14} style={{ color: 'orange' }} />;
+  if (status.toLowerCase().startsWith('concerning')) {
+    return <ThumbsDown size={14} style={{ color: 'red'}} />;
   }
-  return <Meh size={14} />; // Default for unknown status
+  if (status.toLowerCase().startsWith('mixed')) {
+    return <Meh size={14} style={{ color: 'orangered'}} />;
+  }
+  return <Meh size={14} style={{ color: 'grey'}} />; // Default for unknown status
 };
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }) => {
@@ -57,29 +66,40 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }
           <Text fw={700} size="sm" style={{ marginLeft: '10px', flexShrink: 0 }}>{denomination}{product.price?.toFixed(2) || product.price}</Text>
         </Group>
 
-        <Group gap="xs" align="center" style={{ marginTop: 'auto' }}>
+        <Group gap="xs" align="normal" style={{ marginTop: 'auto' }}>
         <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
+            <HoverCard.Dropdown>
+              <Text size="sm">{product.brandEthicalStatus}</Text>
+            </HoverCard.Dropdown>
             <HoverCard.Target>
-              <Badge variant="light" radius="xl" size="sm" leftSection={getEthicalIcon(product.ethicalStatus)} style={{ cursor: 'pointer' }}>
-                {/* No text needed for the badge, just the icon */}
+              <span style={{ cursor: 'pointer' }}>{getEthicalIcon(product.brandEthicalStatus)}</span>
+            </HoverCard.Target>
+          </HoverCard>
+          <Text size="xs" c="dimmed">{product.brand}</Text>
+
+          <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
+            <HoverCard.Target>
+              <Badge circle size="sm" style={{ cursor: 'pointer' }}>
+                {getEthicalIcon(product.sellingCompanyEthicalStatus)}
               </Badge>
             </HoverCard.Target>
             <HoverCard.Dropdown>
-              <Text size="sm">{product.ethicalStatus}</Text>
+              <Text size="sm">{product.sellingCompanyEthicalStatus}</Text>
             </HoverCard.Dropdown>
           </HoverCard>
-          <Text size="xs" c="dimmed">{product.brand}</Text>
+          <Text size="xs" c="dimmed">{`via ${product.sellingCompany}`}</Text>
         </Group>
 
         {product.description && product.description !== "N/A" && (
           <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
             <HoverCard.Target>
               <Text size="xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
-                {truncatedDescription}
+                hello i am a truncated description hello hello hello i am a truncated description hello hello hello i am a truncated description hello hello hello i am a truncated description hello hello
               </Text>
             </HoverCard.Target>
             <HoverCard.Dropdown>
-              <Text size="sm">{product.description}</Text>
+              {/* <Text size="sm">{product.description}</Text> */}
+              <Text size="sm">hello i am a description hello hello</Text>
             </HoverCard.Dropdown>
           </HoverCard>
         )}

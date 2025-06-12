@@ -30,7 +30,8 @@ export interface Product {
   sellingCompany: string;
   price: number;
   thumbnail: string;
-  ethicalStatus: string;
+  brandEthicalStatus: string;
+  sellingCompanyEthicalStatus: string;
   description: string | null;
   url: string;
 }

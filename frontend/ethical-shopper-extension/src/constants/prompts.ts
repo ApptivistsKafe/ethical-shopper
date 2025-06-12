@@ -5,12 +5,13 @@ The only output should be a JSON object representing the identified product. No 
 
 Return a single JSON object with the following keys. Ensure all string values are properly escaped within the JSON.
 
-  name: The product name / title of the product listing
+  name: The product name / title of the product listing, MINUS the brand.
   brand: The brand of the product itself.
   sellingCompany: The company selling the product (the shopping site we are currently on).
   price: The price of the product as listed.
   thumbnail: The URL of the product's primary thumbnail image. Ensure this is a direct image URL.
-  ethicalStatus: A brief description of the perceived ethical standing of the original product's brand and/or selling company, including reasoning.
+  brandEthicalStatus: A brief description of the perceived ethical standing of the original product's brand, including reasoning.
+  sellingCompanyEthicalStatus: A brief description of the perceived ethical standing of the retail/outlet company SELLING the branded product, including reasoning. This may or may not be the same as the brand, but often isn't.
   description: The description of the product, if available.
   url: the full url of the product details (if we are on a cart or checkout page, it is not likely to be the current URL).
 
@@ -23,7 +24,8 @@ interface Product {
   sellingCompany: string;
   price: number;
   thumbnail: string;
-  ethicalStatus: string;
+  brandEthicalStatus: string;
+  sellingCompanyEthicalStatus: string;
   description: string;
   url: string;
 }
@@ -43,14 +45,16 @@ The only output should be a stringified JSON object. No extra text, no newlines,
 
 Return a single JSON object with the following keys. Ensure all string values are properly escaped.
 
-1.  \`ethicalStatus\`: A brief description of the perceived ethical standing of the original product's brand and/or selling company, including reasoning.
-2.  \`ethicalAlternatives\`: (Optional) An array of alternative *companies* considered more ethical than the original seller, including their name, logo thumbnail URL, and reasoning.
-3.  \`comparableProducts\`: An array of specific alternative *products*. Aim for up to 3, but fewer is acceptable. Each product should include:
-    *   \`name\`: Alternative product name.
+\`brandEthicalStatus\`: A brief description of the perceived ethical standing of the original product's brand, including reasoning.
+\`sellingCompanyEthicalStatus\`: A brief description of the perceived ethical standing of the retail/outlet company SELLING the branded product, including reasoning. This may or may not be the same as the brand, but often isn't.
+\`ethicalAlternatives\`: (Optional) An array of alternative *companies* considered more ethical than the original seller, including their name, logo thumbnail URL, and reasoning.
+\`comparableProducts\`: An array of specific alternative *products*. Aim for up to 3, but fewer is acceptable. Each product should include:
+    *   \`name\`: Alternative product name, MINUS the brand.
     *   \`brand\`: Alternative product brand.
-    *   \`company\`: parent company of the alternative brand, if applicable.
+    *   \`sellingCompany\`: parent company of the alternative brand, if applicable.
     *   \`price\`: Price of the alternative.
-    *   \`ethicalStatus\`: A brief description of the perceived ethical standing of the alternative brand and parent company (if applicable), including reasons.
+    *   \`brandEthicalStatus\`: A brief description of the perceived ethical standing of the original product's brand, including reasoning.
+    *   \`sellingCompanyEthicalStatus\`: A brief description of the perceived ethical standing of the retail/outlet company SELLING the branded product, including reasoning. This may or may not be the same as the brand, but often isn't.
 
 Make sure that all URLs provided (thumbnails, purchase links, logos) are REAL, accessible, and likely seen during training or verifiable via web search if the model has that capability.
 
@@ -58,7 +62,8 @@ The returned JSON object should match the \`EthicalAnalysisResult\` interface in
 
 \`\`\`typescript
 interface EthicalAnalysisResult {
-  ethicalStatus: string; // Description of original product/company ethics
+  brandEthicalStatus: string;
+  sellingCompanyEthicalStatus: string;
   ethicalAlternatives?: CompanyAlternative[]; // More ethical companies
   comparableProducts?: EthicalProduct[]; // Specific product alternatives
 }
@@ -70,10 +75,13 @@ interface CompanyAlternative {
 }
 
 interface EthicalProduct {
-  name: string;
-  thumbnail: string; // URL of the product image
-  brand: string;
-  ethicalStatus: A brief description of the perceived ethical standing of the alternative brand, including reasons.
+  name: string; // The product name / title of the product listing, MINUS the brand.
+  brand: string; // The brand of the product itself.
+  sellingCompany: string; // The company selling the product (the shopping site we are currently on).
+  price: number; // The price of the product as listed.
+  thumbnail: string; // The URL of the product's primary thumbnail image. Ensure this is a direct image URL.
+  brandEthicalStatus: string; // A brief description of the perceived ethical standing of the original product's brand, including reasoning.
+  sellingCompanyEthicalStatus: string; // A brief description of the perceived ethical standing of the retail/outlet company SELLING the branded product, including reasoning. This may or may not be the same as the brand, but often isn't.
 }
 \`\`\`
 `;
