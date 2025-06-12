@@ -1,25 +1,31 @@
 // Step 1: Identify the product on the page
-export const productIdentificationPrompt = `Analyze the provided page content (Markdown format). Identify the primary product the user seems to be viewing or intending to purchase.
+export const productIdentificationPrompt = `Analyze the provided page content (Markdown format). Identify the primary product the user seems to be viewing or intending to purchase. If we are on a cart or checkout page, it should be the product in the cart.
 
 The only output should be a JSON object representing the identified product. No extra text, no newlines, no preceding identifiers. The first character should be '{' and the last should be '}'.
 
 Return a single JSON object with the following keys. Ensure all string values are properly escaped within the JSON.
 
-1.  \`name\`: The product name.
-2.  \`brand\`: The brand of the product itself.
-3.  \`company\`: The company selling the product (the shopping site).
-4.  \`price\`: The price of the product as listed.
-5.  \`thumbnail\`: The URL of the product's primary thumbnail image. Ensure this is a direct image URL.
+  name: The product name / title of the product listing
+  brand: The brand of the product itself.
+  sellingCompany: The company selling the product (the shopping site we are currently on).
+  price: The price of the product as listed.
+  thumbnail: The URL of the product's primary thumbnail image. Ensure this is a direct image URL.
+  ethicalStatus: A brief description of the perceived ethical standing of the original product's brand and/or selling company, including reasoning.
+  description: The description of the product, if available.
+  url: the full url of the product details (if we are on a cart or checkout page, it is not likely to be the current URL).
 
-The returned JSON object should match the \`IdentifiedProduct\` interface in the following TypeScript definition:
+The returned JSON object should match the \`Product\` interface in the following TypeScript definition:
 
 \`\`\`typescript
-interface IdentifiedProduct {
+interface Product {
   name: string;
   brand: string;
-  company: string; // Selling site
-  price: string;
-  thumbnail: string; // URL of the product image
+  sellingCompany: string;
+  price: number;
+  thumbnail: string;
+  ethicalStatus: string;
+  description: string;
+  url: string;
 }
 \`\`\`
 `;
@@ -37,7 +43,7 @@ The only output should be a stringified JSON object. No extra text, no newlines,
 
 Return a single JSON object with the following keys. Ensure all string values are properly escaped.
 
-1.  \`ethicalStatus\`: A brief description of the perceived ethical standing of the original product's brand and/or selling company, including reasons.
+1.  \`ethicalStatus\`: A brief description of the perceived ethical standing of the original product's brand and/or selling company, including reasoning.
 2.  \`ethicalAlternatives\`: (Optional) An array of alternative *companies* considered more ethical than the original seller, including their name, logo thumbnail URL, and reasoning.
 3.  \`comparableProducts\`: An array of specific alternative *products*. Aim for up to 3, but fewer is acceptable. Each product should include:
     *   \`name\`: Alternative product name.

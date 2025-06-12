@@ -8,47 +8,12 @@ import {
 } from '../services/aiService';
 import { isCheckoutPage } from '../services/checkoutDetector';
 import { productIdentificationPrompt, ethicalAlternativesPrompt } from '../constants/prompts';
-import { createTheme, MantineProvider } from '@mantine/core';
+import { createTheme, MantineProvider, Group } from '@mantine/core';
+import ProductDisplay from './ProductDisplay';
+import { Product } from '../types'; // Import the Product interface
 
-// --- Interfaces for AI Responses (matching prompts.ts) ---
-interface IdentifiedProduct {
-  name: string;
-  brand: string;
-  company: string; // Selling site
-  price: string;
-  thumbnail: string; // URL of the product image
-}
-
-interface CompanyAlternative {
-  name: string;
-  logoThumbnail: string; // URL of the company logo
-  reasoning: string; // Why they are considered more ethical
-}
-
-interface EthicalProduct {
-  name: string;
-  thumbnail: string; // URL of the product image
-  company: string; // Selling site for the alternative
-  brand: string;
-  price: string;
-  purchaseLink: string; // Link to buy the alternative
-  description: string;
-  url: string;
-  title: string;
-}
-
-export type EthicalAnalysisResult = {
-  name: string;
-  brand: string;
-  company: string; // Selling site
-  price: number;
-  thumbnail: string; // URL of the product image
-  purchaseLink: string; // Link to buy the alternative
-  ethicalStatus: string; // Description of original product/company ethics
-  title: string;
-  description: string;
-  url: string;
-}[];
+// EthicalAnalysisResult will now directly use the Product interface
+export type EthicalAnalysisResult = Product[];
 
 // --- Component Props ---
 interface PopupProps {
@@ -78,8 +43,8 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   const [selectedStepOneModel, setselectedStepOneModel] = useState<string>(stepOneModels[0]);
   const [stepOneLoading, setStepOneLoading] = useState(false);
   const [stepOneError, setStepOneError] = useState<string | null>(null);
-  const [identifiedProduct, setIdentifiedProduct] = useState<IdentifiedProduct | null>(null);
-  const [identifiedProductJson, setIdentifiedProductJson] = useState<string | null>(null); // Store raw JSON for step 2
+  const [identifiedProduct, setProduct] = useState<Product | null>(null);
+  const [identifiedProductJson, setProductJson] = useState<string | null>(null); // Store raw JSON for step 2
   const [stepOneTimeMs, setStepOneTimeMs] = useState<number | null>(null);
   // Removed stepOneCost state
 
@@ -112,7 +77,7 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
       setInitialLoading(true);
       setStepOneError(null); // Reset errors on page check
       setStepTwoError(null);
-      setIdentifiedProduct(null);
+      setProduct(null);
       setEthicalAnalysisResult(null);
       // Removed pageMarkdown reset
 
@@ -193,8 +158,8 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
 
     setStepOneLoading(true);
     setStepOneError(null);
-    setIdentifiedProduct(null);
-    setIdentifiedProductJson(null);
+    setProduct(null);
+    setProductJson(null);
     setStepOneTimeMs(null);
     // Removed cost reset
     // Clear step 2 results as well
@@ -220,28 +185,26 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
 
         // Attempt to parse the JSON response for Step 1
         try {
-            // Basic check for JSON structure before parsing
-            const trimmedData = response.data.trim();
-            if (trimmedData.startsWith('{') && trimmedData.endsWith('}')) {
-                const parsedData: IdentifiedProduct = JSON.parse(trimmedData);
-                // TODO: Add more robust validation if needed
-                setIdentifiedProduct(parsedData);
-                setIdentifiedProductJson(trimmedData); // Store raw JSON for step 2
-            } else {
-                 throw new Error('AI response for Step 1 is not a valid JSON object.');
-            }
+            const parsedData: Product = JSON.parse(response.data as unknown as string);
+            // Ensure price is a number
+            const productWithParsedPrice: Product = {
+                ...parsedData,
+                price: parseFloat(parsedData.price as unknown as string), // Convert to number
+            };
+            setProduct(productWithParsedPrice);
+            setProductJson(response.data as unknown as string); // Store raw JSON for step 2
         } catch (parseError: any) {
             console.error('Error parsing Step 1 JSON response:', parseError, 'Raw response:', response.data);
             setStepOneError(`Failed to parse product data from AI: ${parseError.message}. Raw: ${response.data}`);
-            setIdentifiedProduct(null);
-            setIdentifiedProductJson(null);
+            setProduct(null);
+            setProductJson(null);
         }
 
     } catch (error: any) {
         console.error('Error running Step 1:', error);
         setStepOneError(error.message || 'Failed to identify product.');
-        setIdentifiedProduct(null);
-        setIdentifiedProductJson(null);
+        setProduct(null);
+        setProductJson(null);
     } finally {
         setStepOneLoading(false);
     }
@@ -295,156 +258,115 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   }, [identifiedProductJson, selectedStepTwoModel]);
 
 
-  // --- Render Helper ---
-  const renderTime = (timeMs: number | null) => {
-      if (timeMs === null) return null;
-      return (
-          <div className="perf-info">
-              <span>Time: {(timeMs / 1000).toFixed(2)}s</span>
-          </div>
-      );
-  };
-
   // --- Main Render ---
 
-  if (initialLoading) {
-    return (
-      <div className="popup">
-        <p>Checking page...</p>
-      </div>
-    );
-  }
-
   return (
-  <MantineProvider theme={theme}>
-    <div className="popup" style={{ position: 'relative' }}>
-      {/* Dismiss Button */}
-      {isContentScriptContext && onDismiss && (
-        <button onClick={onDismiss} aria-label="Dismiss" className="dismiss-button">&times;</button>
-      )}
+    <MantineProvider theme={theme}>
+      <div className="popup" style={{ position: 'relative' }}>
+        {/* Dismiss Button */}
+        {isContentScriptContext && onDismiss && (
+          <button onClick={onDismiss} aria-label="Dismiss" className="dismiss-button">&times;</button>
+        )}
 
-      {/* Pause Toggle */}
-      {!isContentScriptContext && (
-        <div className="pause-toggle">
-          <label htmlFor="pause-switch">
-            <input
-              type="checkbox"
-              id="pause-switch"
-              checked={isPaused}
-              onChange={handlePauseToggle}
-            />
-            <span>{isPaused ? 'Extension Paused' : 'Extension Active'}</span>
-          </label>
-        </div>
-      )}
+        {/* Pause Toggle */}
+        {!isContentScriptContext && (
+          <div className="pause-toggle">
+            <label htmlFor="pause-switch">
+              <input
+                type="checkbox"
+                id="pause-switch"
+                checked={isPaused}
+                onChange={handlePauseToggle}
+              />
+              <span>{isPaused ? 'Extension Paused' : 'Extension Active'}</span>
+            </label>
+          </div>
+        )}
 
-      {/* Main Content */}
-      {isCheckout ? (
-        <div className="checkout-detected">
-          <h2>Ethical Shopper Analysis</h2>
+        {/* Main Content */}
+        {isCheckout ? (
+          <div className="checkout-detected">
+            <h2>Ethical Shopper Analysis</h2>
 
-          {/* --- Step 1: Product Identification --- */}
-          <div className="step-section">
-            <h3>Step 1: Identify Product</h3>
-            <div className="model-selector">
+            {/* --- Step 1: Product Identification --- */}
+            <div className="step-section">
+              <h3>Step 1: Identify Product</h3>
+              <Group style={{ marginBottom: '10px' }}>
                 <label htmlFor="step1-model">Model: </label>
                 <select
-                    id="step1-model"
-                    value={selectedStepOneModel}
-                    onChange={(e) => setselectedStepOneModel(e.target.value as string)}
-                    disabled={stepOneLoading || stepTwoLoading}
+                  id="step1-model"
+                  value={selectedStepOneModel}
+                  onChange={(e) => setselectedStepOneModel(e.target.value as string)}
+                  disabled={stepOneLoading || stepTwoLoading}
                 >
-                    {stepOneModels.map(model => <option key={model} value={model}>{model}</option>)}
+                  {stepOneModels.map(model => <option key={model} value={model}>{model}</option>)}
                 </select>
-            </div>
-            <button
+              </Group>
+              <button
                 className="primary-button"
                 onClick={handleRunStepOne}
-                disabled={stepOneLoading || stepTwoLoading} // Button is enabled once initial check is done if it's a checkout page
-            >
+                disabled={stepOneLoading || stepTwoLoading}
+              >
                 {stepOneLoading ? 'Identifying...' : 'Identify Product'}
-            </button>
+              </button>
 
-            {stepOneLoading && <div className="spinner">Running Step 1...</div>}
-            {stepOneError && <div className="error-message">{stepOneError}</div>}
-            {renderTime(stepOneTimeMs)}
+              {stepOneError && <div className="error-message">{stepOneError}</div>}
+            </div>
 
-            {identifiedProduct && !stepOneLoading && (
-                <div className="step-result identified-product">
-                    <h4>Identified Product:</h4>
-                    <div className="product-card">
-                         {identifiedProduct.thumbnail && (
-                            <img src={identifiedProduct.thumbnail} alt={identifiedProduct.name} className="product-thumbnail-small" />
-                         )}
-                         <div className="product-details-small">
-                            <p><strong>Name:</strong> {identifiedProduct.name || 'N/A'}</p>
-                            <p><strong>Brand:</strong> {identifiedProduct.brand || 'N/A'}</p>
-                            <p><strong>Seller:</strong> {identifiedProduct.company || 'N/A'}</p>
-                            <p><strong>Price:</strong> {identifiedProduct.price || 'N/A'}</p>
-                         </div>
-                    </div>
-                </div>
-            )}
-          </div>
+            <hr className="separator" />
 
-          <hr className="separator" />
-
-          {/* --- Step 2: Ethical Alternatives --- */}
-          <div className="step-section">
-            <h3>Step 2: Find Ethical Alternatives</h3>
-             <div className="model-selector">
+            {/* --- Step 2: Ethical Alternatives --- */}
+            <div className="step-section">
+              <h3>Step 2: Find Ethical Alternatives</h3>
+              <Group style={{ marginBottom: '10px' }}>
                 <label htmlFor="step2-model">Model: </label>
                 <select
-                    id="step2-model"
-                    value={selectedStepTwoModel}
-                    onChange={(e) => setselectedStepTwoModel(e.target.value as string)}
-                    disabled={stepOneLoading || stepTwoLoading || !identifiedProduct}
+                  id="step2-model"
+                  value={selectedStepTwoModel}
+                  onChange={(e) => setselectedStepTwoModel(e.target.value as string)}
+                  disabled={stepOneLoading || stepTwoLoading || !identifiedProduct}
                 >
-                    {stepTwoModels.map(model => <option key={model} value={model}>{model}</option>)}
+                  {stepTwoModels.map(model => <option key={model} value={model}>{model}</option>)}
                 </select>
-            </div>
-            <button
+              </Group>
+              <button
                 className="primary-button"
                 onClick={handleRunStepTwo}
-                disabled={!identifiedProduct || stepOneLoading || stepTwoLoading} // Disabled until step 1 is complete
-            >
+                disabled={!identifiedProduct || stepOneLoading || stepTwoLoading}
+              >
                 {stepTwoLoading ? 'Searching...' : 'Find Alternatives'}
-            </button>
+              </button>
 
-            {stepTwoLoading && <div className="spinner">Running Step 2...</div>}
-            {stepTwoError && <div className="error-message">{stepTwoError}</div>}
-            {renderTime(stepTwoTimeMs)}
+              {stepTwoError && <div className="error-message">{stepTwoError}</div>}
+            </div>
 
-            {ethicalAnalysisResult && ethicalAnalysisResult.length > 0 && !stepTwoLoading && (
-              <div className="step-result alternatives-section">
-                <h4>Ethical Analysis & Alternatives:</h4>
-                {ethicalAnalysisResult.map((result, index) => (
-                  <div key={index} className="ethical-product">
-                    <h5>{result.name}</h5>
-                    <img src={result.thumbnail} alt={result.name} style={{ width: '100px', height: '100px' }} />
-                    <p>Brand: {result.brand}</p>
-                    <p>Company: {result.company}</p>
-                    <p>Price: {result.price}</p>
-                    <p>Ethical Status: {result.ethicalStatus}</p>
-                    <p>Title: {result.title}</p>
-                    <p>Description: {result.description}</p>
-                    <a href={result.url} target="_blank" rel="noopener noreferrer">
-                      Product URL
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Product Display Section */}
+            <ProductDisplay
+              products={ethicalAnalysisResult || []}
+              loadingStep1={stepOneLoading || initialLoading}
+              loadingStep2={stepTwoLoading}
+              currentProduct={identifiedProduct || undefined}
+              // currentProduct={identifiedProduct ? {
+              //   name: identifiedProduct.name,
+              //   brand: identifiedProduct.brand,
+              //   sellingCompany: identifiedProduct.sellingCompany,
+              //   price: identifiedProduct.price,
+              //   thumbnail: identifiedProduct.thumbnail,
+              //   ethicalStatus: 'N/A', // Not available from identifiedProduct
+              //   title: identifiedProduct.name, // Using name as title for current product
+              //   description: 'N/A', // Not available from identifiedProduct
+              //   url: '', // Not available from identifiedProduct
+              // } : undefined}
+            />
+
           </div>
-
-        </div>
-      ) : (
-        <div className="no-checkout">
-          <h2>Not a Checkout Page</h2>
-          <p>Keep browsing and we'll notify you when you're ready to checkout!</p>
-        </div>
-      )}
-    </div>
+        ) : (
+          <div className="no-checkout">
+            <h2>Not a Checkout Page</h2>
+            <p>Keep browsing and we'll notify you when you're ready to checkout!</p>
+          </div>
+        )}
+      </div>
     </MantineProvider>
   );
 };

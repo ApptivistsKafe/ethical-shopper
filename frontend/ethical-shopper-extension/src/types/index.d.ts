@@ -15,12 +15,22 @@ interface Document {
 }
 
 // Add custom interfaces for our extension
-interface Website {
+export interface Website {
   domain: string;
   checkoutPatterns: RegExp[];
 }
 
-interface CacheData {
+export interface CacheData {
   isCheckout: boolean;
   expiry: number;
+}
+export interface Product {
+  name: string;
+  brand: string;
+  sellingCompany: string;
+  price: number;
+  thumbnail: string;
+  ethicalStatus: string;
+  description: string | null;
+  url: string;
 }

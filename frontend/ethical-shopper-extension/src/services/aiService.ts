@@ -30,7 +30,7 @@ export const processHtmlForAI = (html: string): string => {
     const doc = parser.parseFromString(html, 'text/html');
 
     // Remove unwanted elements
-    const selectorsToRemove = ['script', 'style', 'link', 'meta', 'noscript', 'svg', 'img', 'header', 'footer', 'nav'];
+    const selectorsToRemove = ['script', 'style', 'link', 'meta', 'noscript', 'svg', 'header', 'footer', 'nav'];
     selectorsToRemove.forEach(selector => {
       doc.querySelectorAll(selector).forEach(el => el.remove());
     });

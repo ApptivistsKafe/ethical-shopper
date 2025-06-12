@@ -17,7 +17,7 @@ const injectPopup = () => {
     rootElement.style.position = 'fixed'; // Use fixed to stay in viewport
     rootElement.style.top = '10px';
     rootElement.style.right = '10px';
-    rootElement.style.zIndex = '9999'; // Ensure it's on top
+    rootElement.style.zIndex = '300'; // Ensure it's on top
     document.body.appendChild(rootElement);
   }
 
