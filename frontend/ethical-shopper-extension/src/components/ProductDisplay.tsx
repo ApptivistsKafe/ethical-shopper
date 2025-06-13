@@ -10,26 +10,31 @@ interface ProductDisplayProps {
   currentProduct?: Product;
 }
 
-const ProductDisplay: React.FC<ProductDisplayProps> = ({ products, loadingStep1, loadingStep2, currentProduct }) => {
+const ProductDisplay: React.FC<ProductDisplayProps> = ({
+  products,
+  loadingStep1,
+  loadingStep2,
+  currentProduct,
+}) => {
   return (
     <Box>
-      {loadingStep1 && (
-        <Loader size="sm" style={{ marginBottom: '10px' }} />
-      )}
-      {loadingStep2 && (
-        <Loader size="sm" style={{ marginBottom: '10px' }} />
-      )}
+      {loadingStep1 && <Loader size="sm" style={{ marginBottom: '10px' }} />}
+      {loadingStep2 && <Loader size="sm" style={{ marginBottom: '10px' }} />}
 
       {currentProduct && (
         <Box style={{ marginBottom: '20px' }}>
-          <Text size="md" fw={700} style={{ marginBottom: '10px' }}>Current Product:</Text>
+          <Text size="md" fw={700} style={{ marginBottom: '10px' }}>
+            Current Product:
+          </Text>
           <ProductCard product={currentProduct} />
         </Box>
       )}
 
       {products.length > 0 && (
         <Box>
-          <Text size="md" fw={700} style={{ marginBottom: '10px' }}>Alternative Products:</Text>
+          <Text size="md" fw={700} style={{ marginBottom: '10px' }}>
+            Alternative Products:
+          </Text>
           {products.map((product, index) => (
             <ProductCard key={index} product={product} />
           ))}

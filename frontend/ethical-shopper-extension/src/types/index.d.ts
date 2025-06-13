@@ -1,4 +1,4 @@
-npm /// <reference types="chrome"/>
+npm; /// <reference types="chrome"/>
 
 declare module '*.scss' {
   const content: { [className: string]: string };

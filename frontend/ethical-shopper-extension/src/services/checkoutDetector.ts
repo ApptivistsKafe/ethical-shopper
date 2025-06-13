@@ -5,59 +5,58 @@ interface Website {
 
 const websites: Website[] = [
   {
-    domain: "amazon.com",
-    checkoutPatterns: [/amazon\.com\/gp\/buy\/spc\/handlers\/display\.html/, /amazon\.com\/gp\/cart\/view\.html/],
+    domain: 'amazon.com',
+    checkoutPatterns: [
+      /amazon\.com\/gp\/buy\/spc\/handlers\/display\.html/,
+      /amazon\.com\/gp\/cart\/view\.html/,
+    ],
   },
   {
-    domain: "ebay.com",
+    domain: 'ebay.com',
     checkoutPatterns: [/ebay\.com\/myb\/PurchaseHistory/, /ebay\.com\/csc\/home/],
   },
   {
-    domain: "etsy.com",
+    domain: 'etsy.com',
     checkoutPatterns: [/etsy\.com\/cart/, /etsy\.com\/your\/purchases/],
   },
   {
-    domain: "walmart.com",
+    domain: 'walmart.com',
     checkoutPatterns: [/walmart\.com\/checkout/],
   },
   {
-    domain: "target.com",
+    domain: 'target.com',
     checkoutPatterns: [/target\.com\/co-cart/],
   },
   // Add more major e-commerce websites
   {
-    domain: "bestbuy.com",
+    domain: 'bestbuy.com',
     checkoutPatterns: [/bestbuy\.com\/checkout/, /bestbuy\.com\/cart/],
   },
   {
-    domain: "wayfair.com",
+    domain: 'wayfair.com',
     checkoutPatterns: [/wayfair\.com\/checkout/, /wayfair\.com\/cart/],
   },
   {
-    domain: "homedepot.com",
+    domain: 'homedepot.com',
     checkoutPatterns: [/homedepot\.com\/checkout/, /homedepot\.com\/cart/],
   },
   {
-    domain: "nike.com",
+    domain: 'nike.com',
     checkoutPatterns: [/nike\.com\/checkout/, /nike\.com\/cart/],
   },
   {
-    domain: "apple.com",
+    domain: 'apple.com',
     checkoutPatterns: [/apple\.com\/shop\/checkout/, /apple\.com\/shop\/cart/],
-  }
+  },
 ];
-
 
 // Check if we're in development environment (no chrome.storage available)
 // const isDevelopment = typeof chrome === 'undefined' || !chrome.storage;
 
 export async function isCheckoutPage(url: string, doc: Document): Promise<boolean> {
   try {
-
     // 2. Domain Matching
-    const matchedWebsite = websites.find((website) =>
-      url.toLowerCase().includes(website.domain)
-    );
+    const matchedWebsite = websites.find((website) => url.toLowerCase().includes(website.domain));
 
     // 3. Domain-Specific URL Matching
     if (matchedWebsite) {
@@ -72,7 +71,7 @@ export async function isCheckoutPage(url: string, doc: Document): Promise<boolea
     let confidence = 0;
 
     // URL Keywords
-    const urlKeywords = ["checkout", "cart"];
+    const urlKeywords = ['checkout', 'cart'];
     if (urlKeywords.some((keyword) => url.match(new RegExp(`\\b${keyword}\\b`, 'i')))) {
       return true;
     }
@@ -110,9 +109,8 @@ export async function isCheckoutPage(url: string, doc: Document): Promise<boolea
 
     const result = confidence >= 2;
     return result;
-
   } catch (error) {
-    console.error("Error in isCheckoutPage:", error);
+    console.error('Error in isCheckoutPage:', error);
     return false;
   }
 }

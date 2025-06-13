@@ -7,7 +7,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       const result = await isCheckoutPage(window.location.href, document);
       sendResponse({ isCheckout: result });
-    })().catch(error => sendResponse({ isCheckout: false, error: error.message }));
+    })().catch((error) => sendResponse({ isCheckout: false, error: error.message }));
 
     // Return true to indicate we will respond asynchronously
     return true;

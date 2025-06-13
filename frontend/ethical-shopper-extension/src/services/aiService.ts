@@ -9,16 +9,16 @@ export type JSON = {
   [key: string]: any;
 };
 export interface AIResponse {
-    data: JSON; // The actual text/JSON response from the model
-    timeMs: number; // Execution time in milliseconds
+  data: JSON; // The actual text/JSON response from the model
+  timeMs: number; // Execution time in milliseconds
 }
 
 export interface AIRequestParams {
-    step: 1 | 2;
-    modelName: ModelName;
-    basePrompt: string; // The base prompt constant (e.g., productIdentificationPrompt)
-    pageMarkdown?: string; // For step 1
-    identifiedProductJson?: string; // For step 2, replaces placeholder in basePrompt
+  step: 1 | 2;
+  modelName: ModelName;
+  basePrompt: string; // The base prompt constant (e.g., productIdentificationPrompt)
+  pageMarkdown?: string; // For step 1
+  identifiedProductJson?: string; // For step 2, replaces placeholder in basePrompt
 }
 
 // --- Helper Functions ---
@@ -30,16 +30,26 @@ export const processHtmlForAI = (html: string): string => {
     const doc = parser.parseFromString(html, 'text/html');
 
     // Remove unwanted elements
-    const selectorsToRemove = ['script', 'style', 'link', 'meta', 'noscript', 'svg', 'header', 'footer', 'nav'];
-    selectorsToRemove.forEach(selector => {
-      doc.querySelectorAll(selector).forEach(el => el.remove());
+    const selectorsToRemove = [
+      'script',
+      'style',
+      'link',
+      'meta',
+      'noscript',
+      'svg',
+      'header',
+      'footer',
+      'nav',
+    ];
+    selectorsToRemove.forEach((selector) => {
+      doc.querySelectorAll(selector).forEach((el) => el.remove());
     });
 
     // Remove comments
     const iterator = doc.createNodeIterator(doc.documentElement, NodeFilter.SHOW_COMMENT);
     let currentNode;
-    while (currentNode = iterator.nextNode()) {
-        currentNode.parentNode?.removeChild(currentNode);
+    while ((currentNode = iterator.nextNode())) {
+      currentNode.parentNode?.removeChild(currentNode);
     }
 
     // Get the body content or the whole document if body is empty
@@ -47,17 +57,21 @@ export const processHtmlForAI = (html: string): string => {
 
     // Convert cleaned HTML to Markdown
     const turndownService = new TurndownService({
-        headingStyle: 'atx', // Use # for headings
-        codeBlockStyle: 'fenced', // Use ``` for code blocks
-        bulletListMarker: '-', // Use - for bullets
+      headingStyle: 'atx', // Use # for headings
+      codeBlockStyle: 'fenced', // Use ``` for code blocks
+      bulletListMarker: '-', // Use - for bullets
     });
     // Add a rule to handle potential empty nodes or nodes Turndown might skip
     turndownService.addRule('skipEmpty', {
-        filter: (node) => {
-            // Skip nodes that are essentially empty or just whitespace
-            return !node.textContent?.trim() && node.childNodes.length === 0 && !['br', 'hr', 'img'].includes(node.nodeName.toLowerCase());
-        },
-        replacement: () => ''
+      filter: (node) => {
+        // Skip nodes that are essentially empty or just whitespace
+        return (
+          !node.textContent?.trim() &&
+          node.childNodes.length === 0 &&
+          !['br', 'hr', 'img'].includes(node.nodeName.toLowerCase())
+        );
+      },
+      replacement: () => '',
     });
 
     let markdown = turndownService.turndown(contentElement);
@@ -68,9 +82,9 @@ export const processHtmlForAI = (html: string): string => {
 
     return markdown;
   } catch (error) {
-    console.error("Error processing HTML for AI:", error);
+    console.error('Error processing HTML for AI:', error);
     // Fallback: return a simple message or empty string if processing fails
-    return "[Error processing page content]";
+    return '[Error processing page content]';
   }
 };
 
@@ -80,24 +94,24 @@ export const callAIModel = async (params: AIRequestParams): Promise<AIResponse> 
   const startTime = performance.now();
   let endpoint = '';
   let body: any = {
-      basePrompt: params.basePrompt,
-      modelName: params.modelName,
+    basePrompt: params.basePrompt,
+    modelName: params.modelName,
   };
 
   if (params.step === 1) {
     endpoint = '/identify-product';
     if (!params.pageMarkdown) {
-        throw new Error("Page markdown is required for Step 1.");
+      throw new Error('Page markdown is required for Step 1.');
     }
     body.pageContent = params.pageMarkdown;
   } else if (params.step === 2) {
     endpoint = '/find-alternatives';
     if (!params.identifiedProductJson) {
-        throw new Error("Identified product JSON is required for Step 2.");
+      throw new Error('Identified product JSON is required for Step 2.');
     }
     body.productDetails = params.identifiedProductJson;
   } else {
-      throw new Error(`Invalid step number: ${params.step}`);
+    throw new Error(`Invalid step number: ${params.step}`);
   }
 
   try {
@@ -111,7 +125,11 @@ export const callAIModel = async (params: AIRequestParams): Promise<AIResponse> 
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(`Backend API error: ${response.status} ${response.statusText} - ${errorData.error || 'Unknown error'}`);
+      throw new Error(
+        `Backend API error: ${response.status} ${response.statusText} - ${
+          errorData.error || 'Unknown error'
+        }`
+      );
     }
 
     const result = await response.json();
@@ -120,16 +138,19 @@ export const callAIModel = async (params: AIRequestParams): Promise<AIResponse> 
 
     // The backend now returns the execution time
     return {
-        data: result.data,
-        timeMs: result.timeMs ?? totalTimeMs, // Prefer backend time if provided
+      data: result.data,
+      timeMs: result.timeMs ?? totalTimeMs, // Prefer backend time if provided
     };
-
   } catch (error) {
     const endTime = performance.now();
     console.error(`Error calling backend API ${endpoint}:`, error);
     return {
-        data: {message:`[Failed to get AI response from backend: ${error instanceof Error ? error.message : String(error)}]`},
-        timeMs: Math.round(endTime - startTime), // Return frontend roundtrip time on error
+      data: {
+        message: `[Failed to get AI response from backend: ${
+          error instanceof Error ? error.message : String(error)
+        }]`,
+      },
+      timeMs: Math.round(endTime - startTime), // Return frontend roundtrip time on error
     };
   }
 };
@@ -137,14 +158,14 @@ export const callAIModel = async (params: AIRequestParams): Promise<AIResponse> 
 // Deprecate or remove the old function
 /** @deprecated Use callAIModel instead */
 export const generateAIResponse = async (prompt: string, pageHtml?: string): Promise<JSON> => {
-    console.warn("generateAIResponse is deprecated. Use callAIModel instead.");
-    // Basic fallback to mimic old behavior using new structure (Step 1, default model)
-    const pageMarkdown = pageHtml ? processHtmlForAI(pageHtml) : undefined;
-    const result = await callAIModel({
-        step: 1,
-        modelName: 'google/gemini-2.0-flash-lite-001', // Default old behavior
-        basePrompt: prompt, // Treat old prompt as base prompt for step 1
-        pageMarkdown: pageMarkdown,
-    });
-    return result.data;
+  console.warn('generateAIResponse is deprecated. Use callAIModel instead.');
+  // Basic fallback to mimic old behavior using new structure (Step 1, default model)
+  const pageMarkdown = pageHtml ? processHtmlForAI(pageHtml) : undefined;
+  const result = await callAIModel({
+    step: 1,
+    modelName: 'google/gemini-2.0-flash-lite-001', // Default old behavior
+    basePrompt: prompt, // Treat old prompt as base prompt for step 1
+    pageMarkdown: pageMarkdown,
+  });
+  return result.data;
 };

@@ -1,11 +1,7 @@
 import '../style.css';
 import '@mantine/core/styles.css';
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-    callAIModel,
-    processHtmlForAI,
-    AIResponse,
-} from '../services/aiService';
+import { callAIModel, processHtmlForAI, AIResponse } from '../services/aiService';
 import { isCheckoutPage } from '../services/checkoutDetector';
 import { productIdentificationPrompt, ethicalAlternativesPrompt } from '../constants/prompts';
 import { createTheme, MantineProvider, Group } from '@mantine/core';
@@ -32,7 +28,11 @@ const theme = createTheme({
 const stepOneModels: string[] = ['google/gemini-2.0-flash-lite-001']; // Only Gemini Flash for Step 1
 const stepTwoModels: string[] = ['google/gemini-2.0-flash-lite-001']; // Only O3 Mini and Grounded Gemini Flash for Step 2
 
-export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScriptContext, onDismiss }) => {
+export const Popup: React.FC<PopupProps> = ({
+  isCheckoutForTesting,
+  isContentScriptContext,
+  onDismiss,
+}) => {
   // --- State ---
   const [isCheckout, setIsCheckout] = useState<boolean | null>(null);
   const [initialLoading, setInitialLoading] = useState(true); // For initial page check
@@ -52,7 +52,9 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
   const [selectedStepTwoModel, setselectedStepTwoModel] = useState<string>(stepTwoModels[0]);
   const [stepTwoLoading, setStepTwoLoading] = useState(false);
   const [stepTwoError, setStepTwoError] = useState<string | null>(null);
-  const [ethicalAnalysisResult, setEthicalAnalysisResult] = useState<EthicalAnalysisResult | null>([]);
+  const [ethicalAnalysisResult, setEthicalAnalysisResult] = useState<EthicalAnalysisResult | null>(
+    []
+  );
   const [stepTwoTimeMs, setStepTwoTimeMs] = useState<number | null>(null);
   // Removed stepTwoCost state
 
@@ -94,21 +96,23 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
           if (tab?.id) {
             // Use try-catch for sendMessage as it can throw if the tab/content script isn't ready
             try {
-                const response = await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_CHECKOUT' });
-                checkoutStatus = response?.isCheckout ?? false;
+              const response = await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_CHECKOUT' });
+              checkoutStatus = response?.isCheckout ?? false;
             } catch (msgError) {
-                console.warn("Could not message content script (might not be injected yet or on a restricted page):", msgError);
-                checkoutStatus = false; // Assume not checkout if we can't communicate
+              console.warn(
+                'Could not message content script (might not be injected yet or on a restricted page):',
+                msgError
+              );
+              checkoutStatus = false; // Assume not checkout if we can't communicate
             }
           }
         } else {
-           errorMsg = "Cannot check page status from this context.";
+          errorMsg = 'Cannot check page status from this context.';
         }
 
         setIsCheckout(checkoutStatus);
 
         // Removed HTML processing from initial check
-
       } catch (err: any) {
         console.error('Error checking/processing page:', err);
         errorMsg = `Error checking page status: ${err.message || String(err)}`;
@@ -130,7 +134,10 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({ type: 'SET_PAUSE_STATE', paused: newPauseState }, (response) => {
         if (chrome.runtime.lastError || !response?.success) {
-          console.error('Error setting pause state:', chrome.runtime.lastError?.message || 'Background script failed.');
+          console.error(
+            'Error setting pause state:',
+            chrome.runtime.lastError?.message || 'Background script failed.'
+          );
           // Optionally revert UI state or show error
         } else {
           console.log('Pause state updated successfully.');
@@ -145,15 +152,15 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
     // Get HTML and process it here, just before the call
     let currentMarkdown: string | null = null;
     try {
-        const html = document.documentElement.outerHTML;
-        currentMarkdown = processHtmlForAI(html);
-        if (!currentMarkdown || currentMarkdown === "[Error processing page content]") {
-             throw new Error("Failed to process page content.");
-        }
+      const html = document.documentElement.outerHTML;
+      currentMarkdown = processHtmlForAI(html);
+      if (!currentMarkdown || currentMarkdown === '[Error processing page content]') {
+        throw new Error('Failed to process page content.');
+      }
     } catch (err: any) {
-         setStepOneError(`Error processing page HTML: ${err.message}`);
-         setStepOneLoading(false); // Ensure loading stops if processing fails
-         return;
+      setStepOneError(`Error processing page HTML: ${err.message}`);
+      setStepOneLoading(false); // Ensure loading stops if processing fails
+      return;
     }
 
     setStepOneLoading(true);
@@ -169,94 +176,104 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
     setStepTwoTimeMs(null);
     // Removed cost reset
 
-
     try {
-        console.log(`Running Step 1 with model: ${selectedStepOneModel}`);
-        const response: AIResponse = await callAIModel({
-            step: 1,
-            modelName: selectedStepOneModel,
-            basePrompt: productIdentificationPrompt,
-            pageMarkdown: currentMarkdown, // Use the just-processed markdown
-        });
-        console.log("Step 1 Response:", response);
+      console.log(`Running Step 1 with model: ${selectedStepOneModel}`);
+      const response: AIResponse = await callAIModel({
+        step: 1,
+        modelName: selectedStepOneModel,
+        basePrompt: productIdentificationPrompt,
+        pageMarkdown: currentMarkdown, // Use the just-processed markdown
+      });
+      console.log('Step 1 Response:', response);
 
-        setStepOneTimeMs(response.timeMs);
-        // Removed cost setting
+      setStepOneTimeMs(response.timeMs);
+      // Removed cost setting
 
-        // Attempt to parse the JSON response for Step 1
-        try {
-            const parsedData: Product = JSON.parse(response.data as unknown as string);
-            // Ensure price is a number
-            const productWithParsedPrice: Product = {
-                ...parsedData,
-                price: parseFloat(parsedData.price as unknown as string), // Convert to number
-            };
-            setProduct(productWithParsedPrice);
-            setProductJson(response.data as unknown as string); // Store raw JSON for step 2
-        } catch (parseError: any) {
-            console.error('Error parsing Step 1 JSON response:', parseError, 'Raw response:', response.data);
-            setStepOneError(`Failed to parse product data from AI: ${parseError.message}. Raw: ${response.data}`);
-            setProduct(null);
-            setProductJson(null);
-        }
-
-    } catch (error: any) {
-        console.error('Error running Step 1:', error);
-        setStepOneError(error.message || 'Failed to identify product.');
+      // Attempt to parse the JSON response for Step 1
+      try {
+        const parsedData: Product = JSON.parse(response.data as unknown as string);
+        // Ensure price is a number
+        const productWithParsedPrice: Product = {
+          ...parsedData,
+          price: parseFloat(parsedData.price as unknown as string), // Convert to number
+        };
+        setProduct(productWithParsedPrice);
+        setProductJson(response.data as unknown as string); // Store raw JSON for step 2
+      } catch (parseError: any) {
+        console.error(
+          'Error parsing Step 1 JSON response:',
+          parseError,
+          'Raw response:',
+          response.data
+        );
+        setStepOneError(
+          `Failed to parse product data from AI: ${parseError.message}. Raw: ${response.data}`
+        );
         setProduct(null);
         setProductJson(null);
+      }
+    } catch (error: any) {
+      console.error('Error running Step 1:', error);
+      setStepOneError(error.message || 'Failed to identify product.');
+      setProduct(null);
+      setProductJson(null);
     } finally {
-        setStepOneLoading(false);
+      setStepOneLoading(false);
     }
   }, [selectedStepOneModel]); // Removed pageMarkdown from dependency array
 
   const handleRunStepTwo = useCallback(async () => {
     if (!identifiedProductJson) {
-        setStepTwoError("Product must be identified in Step 1 first.");
-        return;
+      setStepTwoError('Product must be identified in Step 1 first.');
+      return;
     }
     setStepTwoLoading(true);
     setStepTwoError(null);
     setEthicalAnalysisResult(null);
     setStepTwoTimeMs(null);
-     // Removed cost reset
+    // Removed cost reset
 
     try {
-        console.log(`Running Step 2 with model: ${selectedStepTwoModel}`);
-        const response: AIResponse = await callAIModel({
-            step: 2,
-            modelName: selectedStepTwoModel,
-            basePrompt: ethicalAlternativesPrompt,
-            identifiedProductJson: identifiedProductJson,
-        });
-         console.log("Step 2 Response:", response);
+      console.log(`Running Step 2 with model: ${selectedStepTwoModel}`);
+      const response: AIResponse = await callAIModel({
+        step: 2,
+        modelName: selectedStepTwoModel,
+        basePrompt: ethicalAlternativesPrompt,
+        identifiedProductJson: identifiedProductJson,
+      });
+      console.log('Step 2 Response:', response);
 
-        setStepTwoTimeMs(response.timeMs);
-        // Removed cost setting
+      setStepTwoTimeMs(response.timeMs);
+      // Removed cost setting
 
-        // Attempt to parse the JSON response for Step 2
-        try {
-          if (response?.data) {
-            setEthicalAnalysisResult(response.data as EthicalAnalysisResult);
-          } else {
-            setStepTwoError("No data received from AI for Step 2.");
-            setEthicalAnalysisResult(null);
-          }
-        } catch (parseError: any) {
-            console.error('Error parsing Step 2 JSON response:', parseError, 'Raw response:', response.data);
-            setStepTwoError(`Failed to parse alternatives data from AI: ${parseError.message}. Raw: ${response?.data}`);
-            setEthicalAnalysisResult(null);
+      // Attempt to parse the JSON response for Step 2
+      try {
+        if (response?.data) {
+          setEthicalAnalysisResult(response.data as EthicalAnalysisResult);
+        } else {
+          setStepTwoError('No data received from AI for Step 2.');
+          setEthicalAnalysisResult(null);
         }
-
-    } catch (error: any) {
-        console.error('Error running Step 2:', error);
-        setStepTwoError(error.message || 'Failed to find alternatives.');
+      } catch (parseError: any) {
+        console.error(
+          'Error parsing Step 2 JSON response:',
+          parseError,
+          'Raw response:',
+          response.data
+        );
+        setStepTwoError(
+          `Failed to parse alternatives data from AI: ${parseError.message}. Raw: ${response?.data}`
+        );
         setEthicalAnalysisResult(null);
+      }
+    } catch (error: any) {
+      console.error('Error running Step 2:', error);
+      setStepTwoError(error.message || 'Failed to find alternatives.');
+      setEthicalAnalysisResult(null);
     } finally {
-        setStepTwoLoading(false);
+      setStepTwoLoading(false);
     }
   }, [identifiedProductJson, selectedStepTwoModel]);
-
 
   // --- Main Render ---
 
@@ -265,7 +282,9 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
       <div className="popup" style={{ position: 'relative' }}>
         {/* Dismiss Button */}
         {isContentScriptContext && onDismiss && (
-          <button onClick={onDismiss} aria-label="Dismiss" className="dismiss-button">&times;</button>
+          <button onClick={onDismiss} aria-label="Dismiss" className="dismiss-button">
+            &times;
+          </button>
         )}
 
         {/* Pause Toggle */}
@@ -299,7 +318,11 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
                   onChange={(e) => setselectedStepOneModel(e.target.value as string)}
                   disabled={stepOneLoading || stepTwoLoading}
                 >
-                  {stepOneModels.map(model => <option key={model} value={model}>{model}</option>)}
+                  {stepOneModels.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
                 </select>
               </Group>
               <button
@@ -326,7 +349,11 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
                   onChange={(e) => setselectedStepTwoModel(e.target.value as string)}
                   disabled={stepOneLoading || stepTwoLoading || !identifiedProduct}
                 >
-                  {stepTwoModels.map(model => <option key={model} value={model}>{model}</option>)}
+                  {stepTwoModels.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
                 </select>
               </Group>
               <button
@@ -347,7 +374,6 @@ export const Popup: React.FC<PopupProps> = ({ isCheckoutForTesting, isContentScr
               loadingStep2={stepTwoLoading}
               currentProduct={identifiedProduct || undefined}
             />
-
           </div>
         ) : (
           <div className="no-checkout">
