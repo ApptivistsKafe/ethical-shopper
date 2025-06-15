@@ -1,36 +1,37 @@
 import React from 'react';
-import { Card, Image, Text, Badge, Group, Tooltip, HoverCard, Box } from '@mantine/core';
-import { Smile, Meh, ThumbsDown, CircleHelp } from 'lucide-react';
+import { Card, Image, Text, Badge, Group, HoverCard, Box } from '@mantine/core';
+import { Smile, Meh, CircleHelp, Frown, Laugh, Angry } from 'lucide-react';
 import { Product } from '../types';
+import { EthicalStatus, getEthicalStatusColor } from '../constants/ethicalStatus';
 
 interface ProductCardProps {
   product: Product;
   denomination?: string;
 }
 
-const getEthicalIcon = (status: string) => {
-  // , backgroundColor: 'white'
-  //       , backgroundColor: 'lightgreen'
-  //       , backgroundColor: 'yellowgreen'
-  //       , backgroundColor: 'lightpink'
-  //       , backgroundColor: 'orange'
-  //       , backgroundColor: 'white'
+export const getEthicalIconBadge = (status: string) => {
+  const statusLower = status?.toLowerCase();
+  let icon;
+
+  const bgColor = getEthicalStatusColor(statusLower);
+
   if (!status) {
-    return <CircleHelp size={14} style={{ color: 'grey' }} />;
+    icon = <CircleHelp size={14} style={{ color: 'grey', fill: bgColor }} />;
+  } else if (statusLower.startsWith(EthicalStatus.Excellent.toLowerCase())) {
+    icon = <Laugh size={14} style={{ color: 'green', fill: bgColor }} />;
+  } else if (statusLower.startsWith(EthicalStatus.Good.toLowerCase())) {
+    icon = <Smile size={14} style={{ color: 'yellowgreen', fill: bgColor }} />;
+  } else if (statusLower.startsWith(EthicalStatus.Concerning.toLowerCase())) {
+    icon = <Frown size={14} style={{ color: 'orangered', fill: bgColor }} />;
+  } else if (statusLower.startsWith(EthicalStatus.Mixed.toLowerCase())) {
+    icon = <Meh size={14} style={{ color: 'darkgoldenrod', fill: bgColor }} />;
+  } else if (statusLower.startsWith(EthicalStatus.Poor.toLowerCase())) {
+    icon = <Angry size={14} style={{ color: 'red', fill: bgColor }} />;
+  } else {
+    icon = <Meh size={14} style={{ color: 'grey', fill: bgColor }} />; // Default for unknown status
   }
-  if (status.toLowerCase().startsWith('excellent')) {
-    return <Smile size={14} style={{ color: 'green' }} />;
-  }
-  if (status.toLowerCase().startsWith('good')) {
-    return <Meh size={14} style={{ color: 'greenyellow' }} />;
-  }
-  if (status.toLowerCase().startsWith('concerning')) {
-    return <ThumbsDown size={14} style={{ color: 'red' }} />;
-  }
-  if (status.toLowerCase().startsWith('mixed')) {
-    return <Meh size={14} style={{ color: 'orangered' }} />;
-  }
-  return <Meh size={14} style={{ color: 'grey' }} />; // Default for unknown status
+
+  return icon;
 };
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }) => {
@@ -120,7 +121,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }
             </HoverCard.Dropdown>
             <HoverCard.Target>
               <span style={{ cursor: 'pointer' }}>
-                {getEthicalIcon(product.brandEthicalStatus)}
+                {getEthicalIconBadge(product.brandEthicalStatus)}
               </span>
             </HoverCard.Target>
           </HoverCard>
@@ -130,9 +131,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }
 
           <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
             <HoverCard.Target>
-              <Badge circle size="sm" style={{ cursor: 'pointer' }}>
-                {getEthicalIcon(product.sellingCompanyEthicalStatus)}
-              </Badge>
+              <span style={{ cursor: 'pointer' }}>
+                {getEthicalIconBadge(product.sellingCompanyEthicalStatus)}
+              </span>
             </HoverCard.Target>
             <HoverCard.Dropdown>
               <Text size="sm">{product.sellingCompanyEthicalStatus}</Text>

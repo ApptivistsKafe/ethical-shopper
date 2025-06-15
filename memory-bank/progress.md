@@ -85,14 +85,14 @@
     -   Ensured thumbnail and title are clickable links.
     -   Defined and exported `Product` interface in `frontend/ethical-shopper-extension/src/types/index.d.ts`.
     -   Updated `Popup.tsx` to utilize `ProductDisplay` and pass product data, and replaced old loading indicators.
+    -   Refactored `getEthicalIcon` to `getEthicalIconBadge` in `frontend/ethical-shopper-extension/src/components/ProductCard.tsx` to encapsulate the `Badge` component, add `circle` prop, set `backgroundColor` based on ethicality, and include respective icons as children while retaining their styles.
+-   **Fetched Documentation for UI Libraries:**
+    -   Used `github.com/upstash/context7-mcp` tool to fetch documentation for Mantine, Lucide Icons, and Tailwind CSS.
+    -   Summarized installation and setup steps for each library.
 
 ## Next Steps
 
--   **Test Backend API:**
-
-    -   Manually test the `/identify-product` and `/find-alternatives` endpoints using a tool like Postman or `curl`.
-    -   Ensure API keys are correctly loaded and used in the backend.
-
+-   **Install shadcnui, tailwind, and lucide icons in the frontend portion of the project.**
 -   **Test Backend API:**
 
     -   Manually test the `/identify-product` and `/find-alternatives` endpoints using a tool like Postman or `curl`.

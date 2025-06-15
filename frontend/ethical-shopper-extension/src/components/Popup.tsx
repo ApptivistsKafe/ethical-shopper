@@ -60,6 +60,15 @@ export const Popup: React.FC<PopupProps> = ({
 
   // --- Effects ---
 
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      handleRunStepOne();
+    }, 1000); // 2000 milliseconds = 2 seconds
+
+    // Cleanup function to clear timeout if component unmounts
+    return () => clearTimeout(timeoutId);
+  }, []);
+
   // Load pause state
   useEffect(() => {
     if (!isContentScriptContext && typeof chrome !== 'undefined' && chrome.storage?.local) {
@@ -277,6 +286,7 @@ export const Popup: React.FC<PopupProps> = ({
 
   // --- Main Render ---
 
+  const productLoadingOrUnknown = stepOneLoading || stepTwoLoading || !identifiedProduct;
   return (
     <MantineProvider theme={theme}>
       <div className="popup" style={{ position: 'relative' }}>
@@ -308,36 +318,47 @@ export const Popup: React.FC<PopupProps> = ({
             <h2>Ethical Shopper Analysis</h2>
 
             {/* --- Step 1: Product Identification --- */}
-            <div className="step-section">
-              <h3>Step 1: Identify Product</h3>
-              <Group style={{ marginBottom: '10px' }}>
-                <label htmlFor="step1-model">Model: </label>
-                <select
-                  id="step1-model"
-                  value={selectedStepOneModel}
-                  onChange={(e) => setselectedStepOneModel(e.target.value as string)}
-                  disabled={stepOneLoading || stepTwoLoading}
-                >
-                  {stepOneModels.map((model) => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-                </select>
-              </Group>
-              <button
-                className="primary-button"
-                onClick={handleRunStepOne}
-                disabled={stepOneLoading || stepTwoLoading}
-              >
-                {stepOneLoading ? 'Identifying...' : 'Identify Product'}
-              </button>
+            {identifiedProduct ? (
+              <ProductDisplay
+                products={ethicalAnalysisResult || []}
+                loadingStep1={stepOneLoading || initialLoading}
+                loadingStep2={stepTwoLoading}
+                currentProduct={identifiedProduct || undefined}
+              />
+            ) : (
+              <>
+                <hr className="separator" />
+                <div className="step-section">
+                  <h3>Step 1: Identify Product</h3>
+                  <Group style={{ marginBottom: '10px' }}>
+                    <label htmlFor="step1-model">Model: </label>
+                    <select
+                      id="step1-model"
+                      value={selectedStepOneModel}
+                      onChange={(e) => setselectedStepOneModel(e.target.value as string)}
+                      disabled={stepOneLoading || stepTwoLoading}
+                    >
+                      {stepOneModels.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                  </Group>
+                  <button
+                    className="primary-button"
+                    onClick={handleRunStepOne}
+                    disabled={stepOneLoading || stepTwoLoading}
+                  >
+                    {stepOneLoading ? 'Identifying...' : 'Identify Product'}
+                  </button>
 
-              {stepOneError && <div className="error-message">{stepOneError}</div>}
-            </div>
+                  {stepOneError && <div className="error-message">{stepOneError}</div>}
+                </div>
 
-            <hr className="separator" />
-
+                <hr className="separator" />
+              </>
+            )}
             {/* --- Step 2: Ethical Alternatives --- */}
             <div className="step-section">
               <h3>Step 2: Find Ethical Alternatives</h3>
@@ -347,7 +368,7 @@ export const Popup: React.FC<PopupProps> = ({
                   id="step2-model"
                   value={selectedStepTwoModel}
                   onChange={(e) => setselectedStepTwoModel(e.target.value as string)}
-                  disabled={stepOneLoading || stepTwoLoading || !identifiedProduct}
+                  disabled={productLoadingOrUnknown}
                 >
                   {stepTwoModels.map((model) => (
                     <option key={model} value={model}>
@@ -366,14 +387,6 @@ export const Popup: React.FC<PopupProps> = ({
 
               {stepTwoError && <div className="error-message">{stepTwoError}</div>}
             </div>
-
-            {/* Product Display Section */}
-            <ProductDisplay
-              products={ethicalAnalysisResult || []}
-              loadingStep1={stepOneLoading || initialLoading}
-              loadingStep2={stepTwoLoading}
-              currentProduct={identifiedProduct || undefined}
-            />
           </div>
         ) : (
           <div className="no-checkout">
