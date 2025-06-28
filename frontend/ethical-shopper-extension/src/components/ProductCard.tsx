@@ -1,8 +1,13 @@
 import React from 'react';
-import { Card, Image, Text, Badge, Group, HoverCard, Box } from '@mantine/core';
+import { Card, Image, Text, Badge, Group, HoverCard, Box, Stack } from '@mantine/core';
 import { Smile, Meh, CircleHelp, Frown, Laugh, Angry } from 'lucide-react';
 import { Product } from '../types';
-import { EthicalStatus, getEthicalStatusColor } from '../constants/ethicalStatus';
+import {
+  EthicalStatus,
+  getEthicalStatusBackgroundColor,
+  getEthicalStatusStrokeColor,
+  getGreenRedGradientColor,
+} from '../constants/ethicalStatus';
 
 interface ProductCardProps {
   product: Product;
@@ -13,20 +18,21 @@ export const getEthicalIconBadge = (status: string) => {
   const statusLower = status?.toLowerCase();
   let icon;
 
-  const bgColor = getEthicalStatusColor(statusLower);
+  const strokeColor = getEthicalStatusStrokeColor(statusLower);
+  const bgColor = getEthicalStatusBackgroundColor(statusLower);
 
   if (!status) {
     icon = <CircleHelp size={14} style={{ color: 'grey', fill: bgColor }} />;
   } else if (statusLower.startsWith(EthicalStatus.Excellent.toLowerCase())) {
-    icon = <Laugh size={14} style={{ color: 'green', fill: bgColor }} />;
+    icon = <Laugh size={14} style={{ color: strokeColor, fill: bgColor }} />;
   } else if (statusLower.startsWith(EthicalStatus.Good.toLowerCase())) {
-    icon = <Smile size={14} style={{ color: 'yellowgreen', fill: bgColor }} />;
-  } else if (statusLower.startsWith(EthicalStatus.Concerning.toLowerCase())) {
-    icon = <Frown size={14} style={{ color: 'orangered', fill: bgColor }} />;
+    icon = <Smile size={14} style={{ color: strokeColor, fill: bgColor }} />;
   } else if (statusLower.startsWith(EthicalStatus.Mixed.toLowerCase())) {
-    icon = <Meh size={14} style={{ color: 'darkgoldenrod', fill: bgColor }} />;
+    icon = <Meh size={14} style={{ color: strokeColor, fill: bgColor }} />;
+  } else if (statusLower.startsWith(EthicalStatus.Concerning.toLowerCase())) {
+    icon = <Frown size={14} style={{ color: strokeColor, fill: bgColor }} />;
   } else if (statusLower.startsWith(EthicalStatus.Poor.toLowerCase())) {
-    icon = <Angry size={14} style={{ color: 'red', fill: bgColor }} />;
+    icon = <Angry size={14} style={{ color: strokeColor, fill: bgColor }} />;
   } else {
     icon = <Meh size={14} style={{ color: 'grey', fill: bgColor }} />; // Default for unknown status
   }
@@ -43,13 +49,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }
   return (
     <Card
       shadow="sm"
-      padding="lg"
+      padding="sm"
       radius="md"
       withBorder
       style={{
         display: 'flex',
         height: 'fit-content',
-        maxHeight: '1in',
+        maxHeight: '125px',
         overflow: 'hidden',
         marginBottom: '10px',
         flexDirection: 'row',
@@ -114,34 +120,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }
           </Text>
         </Group>
 
-        <Group gap="xs" align="normal" style={{ marginTop: 'auto' }}>
-          <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
-            <HoverCard.Dropdown>
-              <Text size="sm">{product.brandEthicalStatus}</Text>
-            </HoverCard.Dropdown>
-            <HoverCard.Target>
-              <span style={{ cursor: 'pointer' }}>
-                {getEthicalIconBadge(product.brandEthicalStatus)}
-              </span>
-            </HoverCard.Target>
-          </HoverCard>
-          <Text size="xs" c="dimmed">
-            {product.brand}
-          </Text>
-
-          <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
-            <HoverCard.Target>
-              <span style={{ cursor: 'pointer' }}>
-                {getEthicalIconBadge(product.sellingCompanyEthicalStatus)}
-              </span>
-            </HoverCard.Target>
-            <HoverCard.Dropdown>
-              <Text size="sm">{product.sellingCompanyEthicalStatus}</Text>
-            </HoverCard.Dropdown>
-          </HoverCard>
-          <Text size="xs" c="dimmed">{`via ${product.sellingCompany}`}</Text>
-        </Group>
-
         {product.description && product.description !== 'N/A' && (
           <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
             <HoverCard.Target>
@@ -155,17 +133,46 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, denomination = '$' }
                   WebkitBoxOrient: 'vertical',
                 }}
               >
-                hello i am a truncated description hello hello hello i am a truncated description
-                hello hello hello i am a truncated description hello hello hello i am a truncated
-                description hello hello
+                {product.description}
               </Text>
             </HoverCard.Target>
             <HoverCard.Dropdown>
-              {/* <Text size="sm">{product.description}</Text> */}
-              <Text size="sm">hello i am a description hello hello</Text>
+              <Text size="sm">{product.description}</Text>
             </HoverCard.Dropdown>
           </HoverCard>
         )}
+        <Stack gap="xs" align="normal" style={{ marginTop: 'auto', gap: '0px' }}>
+          <Group style={{ gap: '5px' }}>
+            <Text size="xs" c="dimmed">
+              From <strong>{product.brand}</strong>
+            </Text>
+            <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
+              <HoverCard.Dropdown>
+                <Text size="sm">{product.brandEthicalStatus}</Text>
+              </HoverCard.Dropdown>
+              <HoverCard.Target>
+                <span style={{ cursor: 'pointer' }}>
+                  {getEthicalIconBadge(product.brandEthicalStatus)}
+                </span>
+              </HoverCard.Target>
+            </HoverCard>
+          </Group>
+          <Group style={{ marginLeft: '25px', gap: '5px' }}>
+            <Text size="xs" c="dimmed">
+              via <strong>{product.sellingCompany}</strong>
+            </Text>
+            <HoverCard width={280} shadow="md" openDelay={300} closeDelay={100}>
+              <HoverCard.Target>
+                <span style={{ cursor: 'pointer' }}>
+                  {getEthicalIconBadge(product.sellingCompanyEthicalStatus)}
+                </span>
+              </HoverCard.Target>
+              <HoverCard.Dropdown>
+                <Text size="sm">{product.sellingCompanyEthicalStatus}</Text>
+              </HoverCard.Dropdown>
+            </HoverCard>
+          </Group>
+        </Stack>
       </Box>
     </Card>
   );

@@ -1,4 +1,5 @@
 .popup {
+  /* @import '@mantine/core/styles.css'; */
   // Add max dimensions and scrolling
   max-width: 450px; // Adjust as needed
   max-height: 600px; // Adjust as needed
@@ -391,7 +392,7 @@
   }
 
   p {
-    margin: 0 0 16px;
+    margin: 0 0 4px;
     font-size: 14px;
     line-height: 1.5;
   }
