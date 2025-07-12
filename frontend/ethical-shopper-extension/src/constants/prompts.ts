@@ -1,17 +1,31 @@
 import { EthicalStatus } from './ethicalStatus';
 
-const ethicalStatusAddendum = `Prepend the ethical status with one of the following descriptors, based on which best describes the ethical status of the company, followed by a colon and a space:
-${EthicalStatus.Excellent},
-${EthicalStatus.Good},
-${EthicalStatus.Mixed},
-${EthicalStatus.Concerning},
-${EthicalStatus.Poor},
-.`;
-const brandEthicalStatus = `A brief description of the perceived ethical standing of the original product's brand, including reasoning. ${ethicalStatusAddendum}`;
-const sellingCompanyEthicalStatus = `A brief description of the perceived ethical standing of the retail/outlet company SELLING the branded product, including reasoning. This may or may not be the same as the brand, but often isn't. ${ethicalStatusAddendum}`;
+const ethicalStatusAddendum = `Prepend the ethical status with one of the following descriptors (effectively representing a 1-5 rating scale), based on which best describes the ethical status of the company, followed by a colon and a space:
+${EthicalStatus.Poor}, // 1 - The company has a fairly poor reputation and, as a pattern, engages in practices which are generally considered unethical, or has engaged in isolated incidents considered extremely unethical.
+${EthicalStatus.Concerning}, // 2 - The company has engaged in unethical behavior and doesn't have many redeeming factors, at least not proportional to the unethical behavior.
+${EthicalStatus.Mixed}, // 3 - The company may have encountered some controversy, but has attempted to make legitimate, proportional amends or has engaged in other behavior positive (and proportional) enough that it may balance out their reputation.
+${EthicalStatus.Good}, // 4 - The company has a mostly-good reputation without major controversy.
+${EthicalStatus.Excellent}, // 5 - The company does not have major controversies (or the controversies are minor enough not to move the needle) and has gone out of their way to affect positive change through their mission or action.
+. When doing this, attempt to differentiate between a company's core mission, PR and lipwork designed to help their image, 
+their actual actions behind closed doors, what issues may have been isolated incidents and which may be emblematic of a larger pattern.
+Also, consider if they donate extensively to Democrats, Republicans, or both political parties, which might be considered 'Good', 'Poor', or 'Mixed', respectively, in isolation (but maybe not always, depending on the context of their larger reputation / actions).
+Err on the side of making a positive or negative judgment, rather than mixed, to help the user make a decision, but feel free to use mixed if it truly seems to be the best choice.
+Lack of information is not enough to give a company a mixed or negative rating. If you cannot find specific controversies associated with a company, it should be rated Good or higher.
+If a company is not associated with specific controversies, AND they attempt positive change through their mission or actions, it should likely be rated as Excellent.
+On the other hand, if a company (like Walmart, Amazon, oil companies, Elon Musk's companies, Comcast, Meta/Facebook, Twitter, Fox BP, the Trump Organization, Bitcoin or many crypto companies, ) is KNOWN to regularly engage in severely unethical practices
+(e.g. (union-busting, unfair labor, disproportionately supporting or donating to Republicans, child labor, unsafe worker conditions, disinformation, fraud, surveillance, unnecessary environmental impact, unnecessary animal cruelty, anti-democratic or dramatically anti-competitive or other massive negative externalities),
+it almost doesn't matter what positives they provide, they should be regarded as Concerning or Poor.
+Actions cowtowing to corrupt countries and politicians like donating to trump's inaugural fund, rolling back DEI initiatives, censoring information for the Chinese government about Taiwan, Tiananmen Square, etc, or cooperating in government surveillance programs (unless they had absolutely no other choice) should earn a company a Mixed or lower rating.`;
+const ethicalStatus = `A brief description of the perceived ethical standing of the INSERT_HERE, including reasoning. ${ethicalStatusAddendum}`;
+const brandEthicalStatus = ethicalStatus.split('INSERT_HERE').join(`original product's brand`);
+const sellingCompanyEthicalStatus = ethicalStatus
+  .split('INSERT_HERE')
+  .join(
+    `retail/outlet company SELLING the branded product (which may or may not be the same as the brand, but often isn't)`
+  );
 const Product = `
 interface Product {
-  name: string; // The product name / title of the product listing, MINUS the brand.
+  name: string; // The product name / title of the product listing, MINUS the brand, e.g. if the product name starts with a string that matches / nearly matches the identified brand, remove it.
   brand: string; // The brand of the product itself.
   sellingCompany: string; // The company selling the product (the shopping site we are currently on).
   price: number; // The price of the product as listed.

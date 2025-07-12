@@ -19,6 +19,7 @@
     "amazon-buddy": "github:drawrowfly/amazon-product-api#pull/126/head",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
+    "ebay-api": "^9.2.0",
     "express": "^5.1.0",
     "openai": "^4.97.0",
     "ts-node": "^10.9.2",

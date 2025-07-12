@@ -1,17 +1,12 @@
 ## Current Session Context
 
-[2025-06-14 01:27 EDT]
+2025-06-28 23:53 EDT
 
 ## Recent Changes
 
-- Created new `ethicalStatus.ts` constants file:
-  - Added `EthicalStatus` enum with proper JSDoc comments
-  - Added `getEthicalStatusColor` helper function
-  - Values: Excellent, Good, Mixed, Concerning, Poor
-- Updated `ProductCard.tsx`:
-  - Imported and used new EthicalStatus enum
-  - Refactored getEthicalIconBadge to use enum constants
-  - Separated color logic into getEthicalStatusColor function
+- Replaced Amazon scraping logic with eBay API calls in the `/find-alternatives` endpoint in [`backend/src/index.ts`](backend/src/index.ts).
+- Updated `backend/.env.example` to include `EBAY_APP_ID` and `EBAY_CERT_ID`.
+- Created a new declaration file [`backend/src/ebay-api.d.ts`](backend/src/ebay-api.d.ts) for the `ebay-api` module.
 
 ## Current Goals
 
