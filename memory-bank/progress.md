@@ -80,8 +80,18 @@
   - Created `backend/src/ebay-api.d.ts` for `ebay-api` module declaration.
 
 - **Revamped Product Display UX:**
+
   - Created `ProductCard.tsx` and `ProductDisplay.tsx` React components for displaying product information in horizontal cards.
   - Integrated Mantine `Loader` for loading indicators.
+
+- **Implemented Shadow DOM Style Isolation:**
+  - Created `ShadowDOMWrapper.tsx` component to encapsulate extension UI in Shadow DOM
+  - Modified `content.tsx` to use Shadow DOM wrapper instead of direct DOM injection
+  - Removed Mantine styles import from `Popup.tsx` - styles now injected into Shadow DOM
+  - Shadow DOM wrapper fetches Mantine CSS from CDN and injects custom styles directly
+  - Extension UI is now completely isolated from host webpage styles
+  - Added fallback CSS injection strategy with CDN and inline styles
+  - Ensured maximum z-index for proper layering
   - Implemented ethical status as a badge with `lucide-react` icons and a `Tooltip` for detailed status.
   - Implemented truncated descriptions and titles with `HoverCard` for full text on hover.
   - Ensured thumbnail and title are clickable links.

@@ -3,8 +3,9 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
 import { Popup } from '../components/Popup'; // Import the main Popup component
+import ShadowDOMWrapper from '../components/ShadowDOMWrapper'; // Import Shadow DOM wrapper
 import { isCheckoutPage } from '../services/checkoutDetector'; // Import the detector
-import '../styles.scss'; // Import global styles
+// Remove global styles import - styles will be injected into Shadow DOM
 
 let rootElement: HTMLDivElement | null = null;
 let reactRoot: ReactDOM.Root | null = null;
@@ -14,10 +15,7 @@ const injectPopup = () => {
   if (!rootElement) {
     rootElement = document.createElement('div');
     rootElement.id = 'ethical-shopper-root';
-    rootElement.style.position = 'fixed'; // Use fixed to stay in viewport
-    rootElement.style.top = '10px';
-    rootElement.style.right = '10px';
-    rootElement.style.zIndex = '300'; // Ensure it's on top
+    // Remove inline styles - positioning will be handled by Shadow DOM wrapper
     document.body.appendChild(rootElement);
   }
 
@@ -26,10 +24,19 @@ const injectPopup = () => {
     reactRoot = ReactDOM.createRoot(rootElement);
   }
 
-  // Render the Popup component into the root element
+  // Render the Popup component wrapped in Shadow DOM
   reactRoot.render(
     <React.StrictMode>
-      <Popup isContentScriptContext={true} onDismiss={dismissPopup} />
+      <ShadowDOMWrapper
+        style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          zIndex: '2147483647', // Maximum z-index to ensure it's on top
+        }}
+      >
+        <Popup isContentScriptContext={true} onDismiss={dismissPopup} />
+      </ShadowDOMWrapper>
     </React.StrictMode>
   );
   console.log('Ethical Shopper content script injected Popup component.');

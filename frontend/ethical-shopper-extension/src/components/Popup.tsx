@@ -1,5 +1,5 @@
 import '../style.css';
-import '@mantine/core/styles.css';
+// Removed Mantine styles import - will be injected into Shadow DOM
 import React, { useEffect, useState, useCallback } from 'react';
 import { callAIModel, processHtmlForAI, AIResponse } from '../services/aiService';
 import { isCheckoutPage } from '../services/checkoutDetector';
