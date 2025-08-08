@@ -53,6 +53,162 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
       mantineStyleElement.textContent = modifiedCSS;
       shadowRoot.appendChild(mantineStyleElement);
 
+      // Create style element for our custom styles
+      const customStyleElement = document.createElement('style');
+      customStyleElement.textContent = `
+        /* Shadow DOM container reset */
+        .shadow-container {
+          all: initial;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: 14px;
+          line-height: 1.5;
+          color: #333;
+        }
+        
+        .shadow-container * {
+          box-sizing: border-box;
+        }
+
+        /* Portal container styling - inherit from shadow container */
+        .mantine-portal-container {
+          all: initial;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: 14px;
+          line-height: 1.5;
+          color: #333;
+          position: relative;
+          z-index: 9999;
+        }
+        
+        .mantine-portal-container * {
+          box-sizing: border-box;
+        }
+        
+        /* Popup styles */
+        .popup {
+          max-width: 450px;
+          max-height: 600px;
+          overflow-y: auto;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          border-radius: 8px;
+          padding: 16px;
+          color: #333333;
+          background-color: white;
+          border: 1px solid black;
+        }
+
+        .popup .dismiss-button {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          background: transparent;
+          border: none;
+          font-size: 20px;
+          line-height: 1;
+          cursor: pointer;
+          padding: 2px 5px;
+          color: #aaa;
+        }
+
+        .popup .dismiss-button:hover {
+          color: #333;
+        }
+
+        .popup h2 {
+          margin: 0 0 12px;
+          font-size: 18px;
+          font-weight: 600;
+          line-height: 1.4;
+        }
+
+        .popup p {
+          margin: 0 0 4px;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .popup .primary-button {
+          background-color: #4caf50;
+          color: white;
+          padding: 10px 20px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          width: 100%;
+          transition: background-color 0.2s;
+        }
+
+        .popup .primary-button:hover {
+          background-color: #45a049;
+        }
+
+        .popup .primary-button:disabled {
+          background-color: #ccc;
+          cursor: not-allowed;
+        }
+
+        .popup .secondary-button {
+          background-color: #6c757d;
+          color: white;
+          padding: 8px 16px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 13px;
+          width: auto;
+          transition: background-color 0.2s;
+        }
+
+        .popup .secondary-button:hover {
+          background-color: #5a6268;
+        }
+
+        .popup .spinner {
+          text-align: center;
+          padding: 1rem;
+          color: #666;
+          font-style: italic;
+          margin-top: 0.5rem;
+        }
+
+        .popup .error-message {
+          color: #dc3545;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+          padding: 0.75rem;
+          background-color: #f8d7da;
+          border: 1px solid #f5c6cb;
+          border-radius: 4px;
+          text-align: left;
+        }
+
+        .popup .checkout-detected {
+          text-align: center;
+        }
+
+        .popup .checkout-detected h2 {
+          color: #4caf50;
+        }
+
+        .popup .step-section {
+          border: 1px solid #e0e0e0;
+          border-radius: 6px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          background-color: #fdfdfd;
+        }
+
+        .popup .step-section h3 {
+          font-size: 1.1em;
+          margin: 0 0 1rem;
+          color: #333;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 0.5rem;
+        }
+      `;
+      shadowRoot.appendChild(customStyleElement);
+
       setShadowReady(true);
     };
 
