@@ -47,14 +47,19 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
       fetch('https://unpkg.com/@mantine/core@8.0.2/styles.css')
         .then((response) => response.text())
         .then((css) => {
-          mantineStyleElement.textContent = css;
+          // Modify CSS to apply to portal container as well
+          const modifiedCSS = css.replace(
+            /:root\s*{/g,
+            ':host, .shadow-container, .mantine-portal-container {'
+          );
+          mantineStyleElement.textContent = modifiedCSS;
           shadowRoot.appendChild(mantineStyleElement);
         })
         .catch(() => {
           // If CDN fails, inject minimal Mantine-like styles
           mantineStyleElement.textContent = `
             /* Minimal Mantine-like styles */
-            :root {
+            :host, .shadow-container, .mantine-portal-container {
               --mantine-color-white: #fff;
               --mantine-color-black: #000;
               --mantine-color-gray-0: #f8f9fa;
@@ -95,6 +100,21 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
         }
         
         .shadow-container * {
+          box-sizing: border-box;
+        }
+
+        /* Portal container styling - inherit from shadow container */
+        .mantine-portal-container {
+          all: initial;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: 14px;
+          line-height: 1.5;
+          color: #333;
+          position: relative;
+          z-index: 9999;
+        }
+        
+        .mantine-portal-container * {
           box-sizing: border-box;
         }
         
@@ -251,7 +271,7 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
       // Render children into shadow DOM with MantineProvider configured for Shadow DOM
       reactRootRef.current.render(
         <MantineProvider
-          cssVariablesSelector=".shadow-container"
+          cssVariablesSelector=":host"
           getRootElement={() => portalContainerRef.current!}
           theme={{
             // Configure theme for Shadow DOM
@@ -261,9 +281,6 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
                   target: portalContainerRef.current,
                 },
               },
-              HoverCard: HoverCard.extend({
-                defaultProps: { initiallyOpened: true, closeDelay: 1000000 },
-              }),
             },
             other: {
               shadowRoot: shadowRootRef.current,
