@@ -252,22 +252,21 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
       reactRootRef.current.render(
         <MantineProvider
           cssVariablesSelector=".shadow-container"
-          getRootElement={() => shadowRootRef.current.querySelector('div.plasmo-csui-container')!}
+          getRootElement={() => portalContainerRef.current!}
           theme={{
             // Configure theme for Shadow DOM
             components: {
-              // Portal: {
-              //   defaultProps: {
-              //     target: shadowRootRef.current,
-              //   },
-              // },
+              Portal: {
+                defaultProps: {
+                  target: portalContainerRef.current,
+                },
+              },
               HoverCard: HoverCard.extend({
-                defaultProps: { withinPortal: false, initiallyOpened: true, closeDelay: 1000000 },
+                defaultProps: { initiallyOpened: true, closeDelay: 1000000 },
               }),
             },
             other: {
               shadowRoot: shadowRootRef.current,
-              portalContainer: portalContainerRef.current,
             },
           }}
         >
