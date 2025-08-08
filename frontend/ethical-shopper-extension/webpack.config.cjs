@@ -38,22 +38,27 @@ module.exports = {
         test: /\.scss$/,
         use: [
           'style-loader', // Injects styles into DOM
-          'css-loader',   // Translates CSS into CommonJS
+          'css-loader', // Translates CSS into CommonJS
           'postcss-loader',
-          'sass-loader',  // Compiles Sass to CSS
+          'sass-loader', // Compiles Sass to CSS
         ],
       },
       {
         test: /\.css$/,
+        exclude: /node_modules\/@mantine\/core\/styles\.css$/,
         use: ['style-loader', 'css-loader'],
+      },
+      {
+        test: /node_modules\/@mantine\/core\/styles\.css$/,
+        type: 'asset/source',
       },
     ],
   },
   plugins: [
     // Handles .env file - specify context to look in the frontend directory
     new DotenvWebpackPlugin({
-        path: path.resolve(__dirname, '.env'), // Look for .env in the frontend directory
-        systemvars: true, // Allow system variables to override
+      path: path.resolve(__dirname, '.env'), // Look for .env in the frontend directory
+      systemvars: true, // Allow system variables to override
     }),
 
     // Copies manifest.json and static assets
@@ -73,12 +78,13 @@ module.exports = {
     }),
 
     // Generates index.html for development server
-    !isProduction && new HtmlWebpackPlugin({
-      template: './src/dev/index.html',
-      filename: 'index.html',
-      chunks: ['dev'], // Only include the dev entry script
-      inject: 'body',
-    }),
+    !isProduction &&
+      new HtmlWebpackPlugin({
+        template: './src/dev/index.html',
+        filename: 'index.html',
+        chunks: ['dev'], // Only include the dev entry script
+        inject: 'body',
+      }),
   ].filter(Boolean), // Filter out falsy values (like the dev index.html plugin in production)
 
   // Webpack Dev Server configuration
@@ -92,12 +98,12 @@ module.exports = {
     open: true, // Open browser automatically
     // Serve index.html for the dev entry point
     historyApiFallback: {
-        index: 'index.html'
+      index: 'index.html',
     },
     // Dev server should only serve the 'dev' bundle related files
     devMiddleware: {
-        writeToDisk: true, // Write files to disk so index.html can be served
-    }
+      writeToDisk: true, // Write files to disk so index.html can be served
+    },
   },
 
   // Optimization settings (optional, can be refined)
