@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot, Root } from 'react-dom/client';
+import { HoverCard, MantineProvider } from '@mantine/core';
 
 interface ShadowDOMWrapperProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
   const hostRef = useRef<HTMLDivElement>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);
   const reactRootRef = useRef<Root | null>(null);
+  const portalContainerRef = useRef<HTMLDivElement | null>(null);
   const [shadowReady, setShadowReady] = useState(false);
 
   useEffect(() => {
@@ -28,6 +30,13 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
     const shadowContainer = document.createElement('div');
     shadowContainer.className = 'shadow-container';
     shadowRoot.appendChild(shadowContainer);
+
+    // Create a portal container for Mantine portals (tooltips, modals, etc.)
+    const portalContainer = document.createElement('div');
+    portalContainer.id = 'mantine-portal-container';
+    portalContainer.className = 'mantine-portal-container';
+    shadowRoot.appendChild(portalContainer);
+    portalContainerRef.current = portalContainer;
 
     // Inject styles into shadow DOM
     const injectStyles = () => {
@@ -233,9 +242,38 @@ const ShadowDOMWrapper: React.FC<ShadowDOMWrapperProps> = ({
   }, []);
 
   useEffect(() => {
-    if (shadowReady && reactRootRef.current) {
-      // Render children into shadow DOM
-      reactRootRef.current.render(<div className="shadow-container">{children}</div>);
+    if (
+      shadowReady &&
+      reactRootRef.current &&
+      shadowRootRef.current &&
+      portalContainerRef.current
+    ) {
+      // Render children into shadow DOM with MantineProvider configured for Shadow DOM
+      reactRootRef.current.render(
+        <MantineProvider
+          cssVariablesSelector=".shadow-container"
+          getRootElement={() => shadowRootRef.current.querySelector('div.plasmo-csui-container')!}
+          theme={{
+            // Configure theme for Shadow DOM
+            components: {
+              // Portal: {
+              //   defaultProps: {
+              //     target: shadowRootRef.current,
+              //   },
+              // },
+              HoverCard: HoverCard.extend({
+                defaultProps: { withinPortal: false, initiallyOpened: true, closeDelay: 1000000 },
+              }),
+            },
+            other: {
+              shadowRoot: shadowRootRef.current,
+              portalContainer: portalContainerRef.current,
+            },
+          }}
+        >
+          <div className="shadow-container">{children}</div>
+        </MantineProvider>
+      );
     }
   }, [children, shadowReady]);
 
