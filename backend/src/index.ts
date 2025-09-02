@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import cors from "cors";
 import eBay from "ebay-api";
-import Snoowrap from "snoowrap";
+import { google } from "googleapis";
 
 // Load environment variables
 dotenv.config();
@@ -70,32 +70,6 @@ if (process.env.GOOGLE_AI_API_KEY) {
 } else {
   console.warn(
     "Google AI API Key not found in environment variables. Gemini models will not be available."
-  );
-}
-
-// Initialize Reddit Client (Snoowrap)
-let reddit: Snoowrap | null = null;
-if (
-  process.env.REDDIT_CLIENT_ID &&
-  process.env.REDDIT_CLIENT_SECRET &&
-  process.env.REDDIT_USERNAME &&
-  process.env.REDDIT_PASSWORD
-) {
-  try {
-    reddit = new Snoowrap({
-      clientId: process.env.REDDIT_CLIENT_ID,
-      clientSecret: process.env.REDDIT_CLIENT_SECRET,
-      username: process.env.REDDIT_USERNAME,
-      password: process.env.REDDIT_PASSWORD,
-      userAgent: process.env.REDDIT_USER_AGENT || "EthicalShopper/1.0.0",
-    });
-    console.log("Reddit client initialized successfully");
-  } catch (error) {
-    console.warn("Failed to initialize Reddit client:", error);
-  }
-} else {
-  console.warn(
-    "Reddit API credentials not found in environment variables. Reddit search will not be available."
   );
 }
 
@@ -423,27 +397,12 @@ app.post(
   })
 );
 
-// Reddit search endpoint
-// Reddit search endpoint using Snoowrap
+// Search across ethical shopping sites using Google Custom Search API
 app.get(
-  "/reddit-search",
+  "/google-search",
   asyncHandler(async (req: Request, res: Response) => {
     try {
-      if (!reddit) {
-        return res.status(503).json({
-          success: false,
-          error:
-            "Reddit client not initialized. Please check your Reddit API credentials.",
-        });
-      }
-
-      const {
-        q,
-        subreddit,
-        limit = 10,
-        sort = "relevance",
-        t = "all",
-      } = req.query;
+      const { q, limit = 10 } = req.query;
 
       if (!q || typeof q !== "string") {
         return res.status(400).json({
@@ -452,110 +411,95 @@ app.get(
         });
       }
 
-      console.log(`Searching Reddit for: "${q}" using Snoowrap`);
+      console.log(
+        `Searching ethical sites for: "${q}" using Google Custom Search`
+      );
 
-      let searchResults;
       const searchLimit = Math.min(Number(limit) || 10, 100);
 
-      if (subreddit && typeof subreddit === "string") {
-        // Search within specific subreddit
-        console.log(`Searching in r/${subreddit}`);
-        const subredditObj = reddit.getSubreddit(subreddit);
+      // Google Custom Search API parameters
+      const cx = process.env.GOOGLE_CUSTOM_SEARCH_CX;
+      const apiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY;
 
-        // Map sort parameters to snoowrap sort options
-        let sortOption: "relevance" | "hot" | "top" | "new" | "comments" =
-          "relevance";
-        if (
-          ["relevance", "hot", "top", "new", "comments"].includes(
-            sort as string
-          )
-        ) {
-          sortOption = sort as "relevance" | "hot" | "top" | "new" | "comments";
-        }
-
-        // Map time filter to snoowrap time options
-        let timeOption: "hour" | "day" | "week" | "month" | "year" | "all" =
-          "all";
-        if (
-          ["hour", "day", "week", "month", "year", "all"].includes(t as string)
-        ) {
-          timeOption = t as "hour" | "day" | "week" | "month" | "year" | "all";
-        }
-
-        searchResults = await subredditObj.search({
-          query: q,
-          sort: sortOption,
-          time: timeOption,
-        });
-      } else {
-        // Search all of Reddit
-        console.log("Searching all of Reddit");
-
-        // Map sort parameters to snoowrap sort options
-        let sortOption: "relevance" | "hot" | "top" | "new" | "comments" =
-          "relevance";
-        if (
-          ["relevance", "hot", "top", "new", "comments"].includes(
-            sort as string
-          )
-        ) {
-          sortOption = sort as "relevance" | "hot" | "top" | "new" | "comments";
-        }
-
-        // Map time filter to snoowrap time options
-        let timeOption: "hour" | "day" | "week" | "month" | "year" | "all" =
-          "all";
-        if (
-          ["hour", "day", "week", "month", "year", "all"].includes(t as string)
-        ) {
-          timeOption = t as "hour" | "day" | "week" | "month" | "year" | "all";
-        }
-
-        searchResults = await reddit.search({
-          query: q,
-          sort: sortOption,
-          time: timeOption,
+      if (!cx || !apiKey) {
+        return res.status(500).json({
+          success: false,
+          error:
+            "Google Custom Search credentials not configured. Please set GOOGLE_CUSTOM_SEARCH_CX and GOOGLE_CUSTOM_SEARCH_API_KEY environment variables.",
         });
       }
 
-      // Format the results to match our expected interface and apply limit
-      const posts = searchResults
-        .slice(0, searchLimit)
-        .map((submission: any) => ({
-          id: submission.id,
-          title: submission.title,
-          subreddit:
-            submission.subreddit_name_prefixed?.replace("r/", "") ||
-            submission.subreddit?.display_name ||
-            "unknown",
-          author: submission.author?.name || "[deleted]",
-          score: submission.score || 0,
-          url: submission.url,
-          permalink: `https://www.reddit.com${submission.permalink}`,
-          created_utc: submission.created_utc,
-          num_comments: submission.num_comments || 0,
-          selftext: submission.selftext || null,
-          thumbnail:
-            submission.thumbnail &&
-            submission.thumbnail !== "self" &&
-            submission.thumbnail !== "default" &&
-            submission.thumbnail !== "nsfw" &&
-            submission.thumbnail.startsWith("http")
-              ? submission.thumbnail
-              : null,
-        }));
+      // Sites to search: reddit.com, quora.com, goodonyou.eco, ethicalelephant.com
+      const siteRestriction =
+        "site:reddit.com OR site:quora.com OR site:goodonyou.eco OR site:ethicalelephant.com";
+      const searchQuery = `${q} ${siteRestriction}`;
+
+      console.log(`Searching for: "${searchQuery}" using Google APIs client`);
+
+      // Initialize Google Custom Search client with custom configuration
+      const customsearch = google.customsearch({
+        version: "v1",
+        auth: apiKey,
+      });
+
+      // Make the search request
+      const searchResponse = await customsearch.cse.list({
+        cx: cx,
+        q: searchQuery,
+        num: searchLimit,
+      });
+
+      const data = searchResponse.data;
+
+      // Check if we have search results
+      if (!data.items || data.items.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            query: q,
+            total_results: 0,
+            results: [],
+          },
+        });
+      }
+
+      // Format the results to match our expected interface
+      const posts = data.items.map((item: any, index: number) => {
+        // Extract domain from URL
+        let domain = "unknown";
+        try {
+          const url = new URL(item.link);
+          domain = url.hostname.replace("www.", "");
+        } catch (e) {
+          console.warn("Could not parse URL:", item.link);
+        }
+
+        return {
+          id: `google-${index}`,
+          title: item.title,
+          domain: domain,
+          source: domain,
+          score: 0, // Google doesn't provide score
+          url: item.link,
+          permalink: item.link,
+          created_utc: 0, // Google doesn't provide creation time
+          num_comments: 0, // Google doesn't provide comment count
+          snippet: item.snippet || null,
+          thumbnail: item.pagemap?.cse_thumbnail?.[0]?.src || null,
+        };
+      });
 
       res.json({
         success: true,
         data: {
           query: q,
-          subreddit: subreddit || "all",
+          source: "ethical-sites",
           total_results: posts.length,
-          posts: posts,
+          results: posts,
         },
       });
     } catch (error) {
-      console.error("Error searching Reddit with Snoowrap:", error);
+      console.error("Error searching with Google Custom Search:", error);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error),

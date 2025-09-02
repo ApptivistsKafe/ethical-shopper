@@ -1,7 +1,7 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
 import { Popup } from '../components/Popup';
-import { RedditSearch } from '../components/RedditSearch';
+import { Search } from '../components/Search';
 import '../styles.scss';
 import { getEthicalIconBadge } from '@/components/ProductCard';
 import { Box, createTheme, MantineProvider, Tabs } from '@mantine/core';
@@ -20,7 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <Tabs defaultValue="extension" orientation="horizontal">
         <Tabs.List>
           <Tabs.Tab value="extension">Extension Demo</Tabs.Tab>
-          <Tabs.Tab value="reddit">Reddit Search API</Tabs.Tab>
+          <Tabs.Tab value="search">Ethical Shopping Search</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="extension">
@@ -41,8 +41,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           </Box>
         </Tabs.Panel>
 
-        <Tabs.Panel value="reddit">
-          <RedditSearch />
+        <Tabs.Panel value="search">
+          <Search />
         </Tabs.Panel>
       </Tabs>
     </MantineProvider>
