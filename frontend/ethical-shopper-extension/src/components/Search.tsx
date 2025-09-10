@@ -35,6 +35,8 @@ interface EthicalSearchResponse {
     source: string;
     total_results: number;
     results: SearchResult[];
+    ai_summary?: string | null;
+    scraped_urls?: number;
   };
   error?: string;
 }
@@ -133,6 +135,33 @@ export const Search: React.FC = () => {
               </Text>
               <Text size="sm" c="dimmed">
                 Found {results.data?.total_results} results across ethical shopping resources
+                {results.data?.scraped_urls &&
+                  results.data.scraped_urls > 0 &&
+                  ` • Analyzed content from ${results.data.scraped_urls} pages`}
+              </Text>
+
+              {/* AI Summary Section */}
+              {results.data?.ai_summary && (
+                <Card withBorder p="md" radius="md" style={{ backgroundColor: '#f8f9fa' }}>
+                  <Stack gap="sm">
+                    <Group gap="xs">
+                      <Text size="md" fw={600} c="blue">
+                        🤖 AI-Generated Recommendations
+                      </Text>
+                      <Badge size="xs" variant="light" color="blue">
+                        Powered by Gemini
+                      </Badge>
+                    </Group>
+                    <Text size="sm" style={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                      {results.data.ai_summary}
+                    </Text>
+                  </Stack>
+                </Card>
+              )}
+
+              {/* Search Results */}
+              <Text size="md" fw={600} mt="md">
+                📄 Source Articles
               </Text>
 
               {results.data?.results.map((result) => (

@@ -5,9 +5,24 @@ import OpenAI from "openai";
 import cors from "cors";
 import eBay from "ebay-api";
 import { google } from "googleapis";
+import * as cheerio from "cheerio";
+import https from "https";
+import http from "http";
+import { URL } from "url"; // Import URL
+import parseBodyData from "./parseBodyData.js";
+import snoowrap from "snoowrap";
 
 // Load environment variables
 dotenv.config();
+
+// Initialize snoowrap for Reddit API access
+const reddit = new snoowrap({
+  userAgent: process.env.REDDIT_USER_AGENT!,
+  clientId: process.env.REDDIT_CLIENT_ID!,
+  clientSecret: process.env.REDDIT_CLIENT_SECRET!,
+  username: process.env.REDDIT_USERNAME!,
+  password: process.env.REDDIT_PASSWORD!,
+});
 
 // Initialize Express app
 const app = express();
@@ -109,14 +124,6 @@ async function handleAICall(params: AIRequestParams): Promise<AIResponse> {
     const modelName: string = params.modelName;
 
     const apiStartTime = performance.now();
-    // const completion = await openai.responses.create({
-    //   model: string, // Updated to use the correct O3 Mini model
-    //   input: finalPrompt,
-    // });
-    // const completion = await openai.responses.create({
-    //   model: string,
-    //   input: finalPrompt,
-    // });
     const completion = await openai.chat.completions.create({
       model: modelName,
       messages: [
@@ -131,42 +138,6 @@ async function handleAICall(params: AIRequestParams): Promise<AIResponse> {
 
     // Process the output array from responses.create based on the example structure
     try {
-      // if (!completion.output || !Array.isArray(completion.output)) {
-      //   throw new Error("Invalid completion output format: expected an array");
-      // }
-
-      // const messageItem = completion.output.find(
-      //   (item: any) =>
-      //     typeof item === "object" && item !== null && item.type === "message"
-      // );
-
-      // if (!messageItem) {
-      //   throw new Error("No 'message' item found in output array");
-      // }
-
-      // // Need to cast to any due to incomplete type definitions
-      // const messageItemAny = messageItem as any;
-
-      // if (!messageItemAny.content || !Array.isArray(messageItemAny.content)) {
-      //   throw new Error("No 'content' array found in message item");
-      // }
-
-      // const textItem = messageItemAny.content.find(
-      //   (contentItem: any) =>
-      //     typeof contentItem === "object" &&
-      //     contentItem !== null &&
-      //     contentItem.type === "output_text"
-      // );
-
-      // if (!textItem || typeof textItem.text !== "string") {
-      //   throw new Error("No valid 'output_text' item found in content array");
-      // }
-
-      // responseText = textItem.text;
-      // console.log(
-      //   "Successfully processed response from openai.responses.create"
-      // );
-
       responseText = extractResponseText(completion);
     } catch (error) {
       console.warn("Error processing OpenAI response:", error);
@@ -397,6 +368,282 @@ app.post(
   })
 );
 
+// Helper function to format parsed Reddit comments for AI context
+function formatCommentsForAI(comments: any[], depth: number = 0): string {
+  if (!Array.isArray(comments)) return "";
+
+  const indent = "  ".repeat(depth);
+  let result = "";
+
+  for (const comment of comments) {
+    if (typeof comment === "string") {
+      // Simple string comment
+      result += `${indent}- ${comment.substring(0, 200)}\n`;
+    } else if (comment && typeof comment === "object") {
+      // Object with body and potentially children
+      if (comment.body) {
+        result += `${indent}- ${comment.body.substring(0, 200)}\n`;
+      }
+      if (comment.children && Array.isArray(comment.children)) {
+        result += formatCommentsForAI(comment.children, depth + 1);
+      }
+    }
+  }
+
+  return result;
+}
+
+// Helper function to count comments in parsed Reddit data
+function countComments(parsedComments: any): number {
+  if (!parsedComments || !parsedComments.children) return 0;
+
+  let count = 0;
+  function countRecursive(comments: any[]): void {
+    for (const comment of comments) {
+      if (typeof comment === "string") {
+        count++;
+      } else if (comment && typeof comment === "object") {
+        if (comment.body) count++;
+        if (comment.children && Array.isArray(comment.children)) {
+          countRecursive(comment.children);
+        }
+      }
+    }
+  }
+
+  countRecursive(parsedComments.children);
+  return count;
+}
+
+// Enhanced scraping function that handles Reddit URLs specially
+interface ScrapeResult {
+  content: string;
+  redditComments?: any;
+  redditPost?: any; // Added for snoowrap post data
+  isReddit: boolean;
+}
+
+async function scrapeUrl(url: string): Promise<string> {
+  const result = await scrapeUrlEnhanced(url);
+  return result.content;
+}
+
+async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
+  const currentUrl = url; // Capture url for consistent access
+  try {
+    console.log(`Scraping: ${currentUrl}`);
+
+    // Check if this is a Reddit URL
+    const isRedditUrl = currentUrl.includes("reddit.com");
+
+    if (isRedditUrl) {
+      console.log(`Reddit URL detected, using snoowrap: ${currentUrl}`);
+      const submissionIdMatch = currentUrl.match(
+        /(?:reddit.com\/r\/.*?\/\w+\/)([a-z0-9]+)/i
+      );
+      if (!submissionIdMatch || !submissionIdMatch[1]) {
+        console.error(
+          `Could not extract Reddit submission ID from URL: ${currentUrl}`
+        );
+        return { content: "", isReddit: true };
+      }
+      const submissionId = submissionIdMatch[1];
+
+      try {
+        const submission: any = await reddit
+          .getSubmission(submissionId)
+          .expandReplies({ limit: 0, depth: 1 }); // Cast to any
+        const postContent = `${submission.title}\n${
+          submission.selftext || ""
+        }`.trim();
+
+        const rawComments = submission.comments.map((comment: any) => ({
+          author: comment.author.name,
+          body: comment.body,
+          score: comment.score,
+        }));
+
+        // Transform rawComments to match the expected input of parseBodyData
+        // The original parseBodyData expects a structure like { data: { children: [{ data: ... }] } }
+        const transformedCommentsForParseBodyData = {
+          data: {
+            children: rawComments.map((comment: any) => ({ data: comment })),
+          },
+        };
+        const parsedComments = parseBodyData(
+          transformedCommentsForParseBodyData
+        );
+
+        let commentsText = "";
+        if (parsedComments && parsedComments.children) {
+          commentsText = formatCommentsForAI(parsedComments.children);
+        }
+
+        const fullContent =
+          postContent + (commentsText ? `\n\nComments:\n${commentsText}` : "");
+
+        return {
+          content: fullContent.substring(0, 8000),
+          redditPost: submission,
+          redditComments: rawComments,
+          isReddit: true,
+        };
+      } catch (error) {
+        console.error(
+          `Error fetching Reddit submission with snoowrap for ${currentUrl}:`,
+          error
+        );
+        return { content: "", isReddit: true };
+      }
+    } else {
+      // Original logic for non-Reddit URLs
+      const urlObj = new URL(currentUrl);
+      const isHttps = urlObj.protocol === "https:";
+      const client = isHttps ? https : http;
+
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || (isHttps ? 443 : 80),
+        path: urlObj.pathname + urlObj.search,
+        method: "GET",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        timeout: 10000,
+      };
+
+      return new Promise((resolve) => {
+        // Wrapped client.request in a new Promise
+        const req = client.request(options, (res) => {
+          let data = "";
+
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+
+          res.on("end", () => {
+            try {
+              const $ = cheerio.load(data);
+
+              // Comprehensively remove all non-content elements
+              $(
+                "script, style, nav, footer, header, aside, .ad, .advertisement, .sidebar, .menu, .navigation, .breadcrumb, .social, .share, .pagination, .metadata, .tags, .category, .author-info, .related, .recommended, button, .cookie, .popup, .modal, .overlay, .banner"
+              ).remove();
+
+              // Remove elements by common class patterns
+              $(
+                '[class*="ad-"], [class*="banner"], [class*="promo"], [class*="newsletter"], [id*="ad-"], [id*="banner"], [id*="promo"]'
+              ).remove();
+
+              // Extract clean text content from main content areas
+              let content = "";
+
+              // Priority selectors for main content
+              const contentSelectors = [
+                "main",
+                "article",
+                ".content",
+                ".post-content",
+                ".entry-content",
+                ".article-content",
+                ".post-body",
+                ".text-content",
+                ".description",
+                ".post",
+                ".entry",
+                ".commentarea",
+              ];
+
+              // Try to get the best content area
+              for (const selector of contentSelectors) {
+                const element = $(selector);
+                if (element.length > 0) {
+                  const text = element.text().trim();
+                  if (text && text.length > content.length) {
+                    content = text;
+                  }
+                }
+              }
+
+              // If no main content found, extract from body but exclude common non-content areas
+              if (!content || content.length < 200) {
+                // Clone body and remove more potential noise
+                const bodyClone = $("body").clone();
+                bodyClone
+                  .find("script, style, nav, footer, header, aside, .sidebar")
+                  .remove();
+                content = bodyClone.text().trim();
+              }
+
+              // Clean up the content thoroughly
+              content = content
+                .replace(/\s+/g, " ") // Multiple spaces to single space
+                .replace(/\n+/g, "\n") // Multiple newlines to single newline
+                .replace(/\t+/g, " ") // Tabs to spaces
+                .replace(/[^\w\s\.\,\!\?\;\:\-\(\)]/g, "") // Remove special characters except basic punctuation
+                .trim()
+                .substring(0, 6000); // Limit to 6000 chars to stay within token limits
+
+              // Remove very short lines (likely navigation/UI text)
+              const lines = content.split("\n");
+              content = lines
+                .filter((line) => line.trim().length > 10) // Keep only substantial lines
+                .join("\n")
+                .trim();
+
+              resolve({
+                content,
+                isReddit: false,
+              });
+            } catch (error) {
+              console.error(
+                `Error parsing content from ${currentUrl}:`,
+                error instanceof Error ? error.message : String(error)
+              );
+              resolve({
+                content: "",
+                isReddit: false,
+              });
+            }
+          });
+        });
+
+        req.on("error", (error) => {
+          console.error(`Error scraping ${currentUrl}:`, error.message);
+          resolve({
+            content: "",
+            isReddit: false,
+          });
+        });
+
+        req.on("timeout", () => {
+          console.error(`Timeout scraping ${currentUrl}`);
+          req.destroy();
+          resolve({
+            content: "",
+            isReddit: false,
+          });
+        });
+
+        req.end();
+      });
+    }
+  } catch (error) {
+    console.error(
+      `Error scraping ${currentUrl}:`,
+      error instanceof Error ? error.message : String(error)
+    );
+    return {
+      content: "",
+      isReddit: false,
+    };
+  }
+}
+
 // Search across ethical shopping sites using Google Custom Search API
 app.get(
   "/google-search",
@@ -415,7 +662,7 @@ app.get(
         `Searching ethical sites for: "${q}" using Google Custom Search`
       );
 
-      const searchLimit = Math.min(Number(limit) || 10, 100);
+      const searchLimit = Math.min(Number(limit) || 5, 5); // Limit to 5 for scraping
 
       // Google Custom Search API parameters
       const cx = process.env.GOOGLE_CUSTOM_SEARCH_CX;
@@ -489,17 +736,128 @@ app.get(
         };
       });
 
+      // Scrape content from the first 5 URLs for AI analysis
+      console.log(
+        `Scraping content from ${posts.length} URLs for AI analysis...`
+      );
+      // Add delays between requests to avoid rate limiting, especially for Reddit
+      const scrapingPromises = posts.slice(0, 5).map(async (post, index) => {
+        // Add progressive delay for Reddit URLs to avoid overwhelming their servers
+        if (post.url.includes("reddit.com")) {
+          await new Promise((resolve) => setTimeout(resolve, index * 2000)); // 2 second delays for Reddit
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, index * 500)); // 500ms for other sites
+        }
+
+        const result = await scrapeUrlEnhanced(post.url);
+        let sourceInfo = post.source;
+        if (result.isReddit) {
+          sourceInfo += ` [Reddit post]`;
+        }
+        return {
+          url: post.url,
+          title: post.title,
+          sourceInfo: sourceInfo,
+          content: result.content,
+          redditComments: result.redditComments,
+          redditPost: result.redditPost,
+        };
+      });
+
+      const scrapedResults = await Promise.all(scrapingPromises);
+
+      // Combine scraped content with original post data
+      const resultsWithContent = posts.map((post) => {
+        const scraped = scrapedResults.find((s) => s.url === post.url);
+        return {
+          ...post,
+          content: scraped?.content || post.snippet, // Fallback to snippet if scraping failed
+          sourceInfo: scraped?.sourceInfo || post.source,
+          redditComments: scraped?.redditComments || undefined,
+          redditPost: scraped?.redditPost || undefined,
+        };
+      });
+
+      // Filter out empty results
+      const validResults = scrapedResults.filter(
+        (result) => result.content.length > 50
+      );
+
+      // Generate AI summary if we have content
+      let aiSummary = null;
+      if (validResults.length > 0) {
+        try {
+          console.log(
+            `Generating AI summary from ${validResults.length} scraped pages...`
+          );
+
+          // Combine all scraped content for AI analysis, with special handling for Reddit
+          const combinedContent = validResults
+            .map((result) => {
+              let contentPreview = result.content.substring(0, 1500);
+              let sourceInfo = `Source: ${result.title} (${result.url})`;
+
+              if (result.isReddit && result.redditComments) {
+                sourceInfo += ` [Reddit post with ${countComments(
+                  result.redditComments
+                )} comments]`;
+                // For Reddit posts, include a note about comment analysis
+                contentPreview +=
+                  "\n[Reddit comments included for comprehensive analysis]";
+              }
+
+              return `${sourceInfo}\nContent: ${contentPreview}`;
+            })
+            .join("\n\n---\n\n");
+
+          // Initialize Gemini AI
+          const genAI = new GoogleGenerativeAI(
+            process.env.GOOGLE_AI_API_KEY || "missing api key"
+          );
+          const model = genAI.getGenerativeModel({
+            model: "gemini-2.0-flash-exp",
+          });
+
+          const redditContext = validResults.some((r) => r.isReddit)
+            ? "\n\nNote: Reddit posts include community discussions and user opinions from comments, providing real-world usage insights and recommendations."
+            : "";
+
+          const prompt = `Based on the following scraped content from ethical shopping websites, generate a concise numbered list of 3-5 brand / model recommendations for the following query: "${q}".
+
+Content from websites:
+${combinedContent}${redditContext}
+
+Please provide:
+1. A numbered list (1. 2. 3. etc.) of specific brand / model recommendations, preferably 5 total.
+2. Sometimes we may only have have an alternative *brand*, and you will need to infer a suitable model / specific product for that brand that is a good alternative to the original product. However, models / specific products that have been explicitly mentioned take precedence over brand recommendations.
+3. Just list the names of the brand and model / specific products. Do not list any more information.
+4. Do some sentiment analysis on the products mentioned and only include them in the results if they are discussed in a favorable or neutral context. Do NOT recommend products that are discussed in a negative context.
+5. For Reddit content: Pay special attention to user comments and discussions, as these often contain valuable real-world recommendations and experiences.
+6. Ideally the recommended products would be from different brands than the original we are finding alternatives for.
+
+Format your response as a simple numbered list without additional formatting or information.`;
+
+          const result = await model.generateContent(prompt);
+          const response = await result.response;
+          aiSummary = response.text();
+
+          console.log("AI summary generated successfully");
+        } catch (error) {
+          console.error("Error generating AI summary:", error);
+          aiSummary = "Unable to generate AI summary at this time.";
+        }
+      }
+
       res.json({
         success: true,
         data: {
           query: q,
-          source: "ethical-sites",
-          total_results: posts.length,
-          results: posts,
+          total_results: data.searchInformation?.totalResults,
+          results: resultsWithContent,
         },
       });
     } catch (error) {
-      console.error("Error searching with Google Custom Search:", error);
+      console.error("Error during Google Search:", error);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -510,36 +868,33 @@ app.get(
   })
 );
 
+// Start the server
 app.listen(port, () => {
-  console.log(`Backend server listening on port ${port}`);
-
-  // Log all registered routes for debugging
+  console.log(`Backend server running on port ${port}`);
   console.log("Registered routes:");
   if (app._router && app._router.stack) {
     app._router.stack.forEach((r: any) => {
       if (r.route && r.route.path) {
-        console.log(`${Object.keys(r.route.methods)} ${r.route.path}`);
+        console.log(
+          `- ${r.route.stack[0].method.toUpperCase()} ${r.route.path}`
+        );
       }
     });
   } else {
     console.log("Unable to introspect routes - router stack not available");
   }
 });
-function extractResponseText(
-  completion: OpenAI.Chat.Completions.ChatCompletion & {
-    _request_id?: string | null;
-  }
-): string {
-  const text = completion.choices[0].message.content || "";
-  // Use regex to find all JSON code blocks
-  // This regex captures the content inside ```json ... ```
-  const regex = /```json\s*([\s\S]*?)```/g;
-  const matches = [...text.matchAll(regex)];
 
-  if (matches.length === 1) {
-    // Extract just the JSON content
-    const jsonContents = matches.map((match) => match[1]);
-    return jsonContents[0];
+// Helper function to extract response text from OpenAI completion
+function extractResponseText(completion: any): string {
+  if (
+    completion &&
+    completion.choices &&
+    completion.choices.length > 0 &&
+    completion.choices[0].message &&
+    completion.choices[0].message.content
+  ) {
+    return completion.choices[0].message.content;
   }
-  return text;
+  throw new Error("Could not extract response text from OpenAI completion.");
 }
