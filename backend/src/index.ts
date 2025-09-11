@@ -452,7 +452,7 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
       try {
         const submission: any = await reddit
           .getSubmission(submissionId)
-          .expandReplies({ limit: 0, depth: 1 }); // Cast to any
+          .expandReplies({ limit: 3, depth: 1 }); // Cast to any
         const postContent = `${submission.title}\n${
           submission.selftext || ""
         }`.trim();
@@ -834,6 +834,8 @@ Please provide:
 4. Do some sentiment analysis on the products mentioned and only include them in the results if they are discussed in a favorable or neutral context. Do NOT recommend products that are discussed in a negative context.
 5. For Reddit content: Pay special attention to user comments and discussions, as these often contain valuable real-world recommendations and experiences.
 6. Ideally the recommended products would be from different brands than the original we are finding alternatives for.
+7. DO NOT include the product and/or brand we are asking for alternatives for in the results
+8. DO NOT just suggest brands- instead, infer and provide a suggested model based on the context of the discussion
 
 Format your response as a simple numbered list without additional formatting or information.`;
 
@@ -854,6 +856,8 @@ Format your response as a simple numbered list without additional formatting or 
           query: q,
           total_results: data.searchInformation?.totalResults,
           results: resultsWithContent,
+          ai_summary: aiSummary,
+          scraped_urls: validResults.length,
         },
       });
     } catch (error) {
