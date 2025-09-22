@@ -421,6 +421,7 @@ interface ScrapeResult {
   redditComments?: any;
   redditPost?: any; // Added for snoowrap post data
   isReddit: boolean;
+  timeMs: number;
 }
 
 async function scrapeUrl(url: string): Promise<string> {
@@ -429,6 +430,7 @@ async function scrapeUrl(url: string): Promise<string> {
 }
 
 async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
+  const startTime = performance.now(); // Start timer for the entire scrapeUrlEnhanced function
   const currentUrl = url; // Capture url for consistent access
   try {
     console.log(`Scraping: ${currentUrl}`);
@@ -438,6 +440,7 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
 
     if (isRedditUrl) {
       console.log(`Reddit URL detected, using snoowrap: ${currentUrl}`);
+      const redditScrapeStartTime = performance.now(); // Start timer for Reddit scraping
       const submissionIdMatch = currentUrl.match(
         /(?:reddit.com\/r\/.*?\/\w+\/)([a-z0-9]+)/i
       );
@@ -445,23 +448,48 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
         console.error(
           `Could not extract Reddit submission ID from URL: ${currentUrl}`
         );
-        return { content: "", isReddit: true };
+        const redditScrapeEndTime = performance.now();
+        const redditScrapeTimeMs = Math.round(
+          redditScrapeEndTime - redditScrapeStartTime
+        );
+        console.log(
+          `❌ Reddit scraping failed (invalid URL) for ${currentUrl} in ${redditScrapeTimeMs}ms`
+        );
+        return {
+          content: "",
+          isReddit: true,
+          timeMs: redditScrapeTimeMs,
+        };
       }
       const submissionId = submissionIdMatch[1];
 
       try {
-        const submission: any = await reddit
-          .getSubmission(submissionId)
-          .expandReplies({ limit: 3, depth: 1 }); // Cast to any
+        // Optimized approach: Fetch submission without expanding replies, then limit comments manually
+        const submission: any = await reddit.getSubmission(submissionId);
         const postContent = `${submission.title}\n${
           submission.selftext || ""
         }`.trim();
 
-        const rawComments = submission.comments.map((comment: any) => ({
+        // Log comment retrieval metrics for investigation
+        console.log(
+          `🔍 Reddit submission ${submissionId}: Retrieved ${submission.comments.length} top-level comments`
+        );
+
+        // Manually limit to top 5 comments by score for better performance
+        const limitedComments = submission.comments
+          .sort((a: any, b: any) => b.score - a.score) // Sort by score descending
+          .slice(0, 5); // Take only top 5 comments
+
+        const rawComments = limitedComments.map((comment: any) => ({
           author: comment.author.name,
           body: comment.body,
           score: comment.score,
         }));
+
+        // Log total comment processing metrics
+        console.log(
+          `🔍 Reddit submission ${submissionId}: Processing ${rawComments.length} comments (limited from ${submission.comments.length}) for AI analysis`
+        );
 
         // Transform rawComments to match the expected input of parseBodyData
         // The original parseBodyData expects a structure like { data: { children: [{ data: ... }] } }
@@ -482,20 +510,40 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
         const fullContent =
           postContent + (commentsText ? `\n\nComments:\n${commentsText}` : "");
 
+        const redditScrapeEndTime = performance.now();
+        const redditScrapeTimeMs = Math.round(
+          redditScrapeEndTime - redditScrapeStartTime
+        );
+        console.log(
+          `✅ Reddit scraping completed for ${currentUrl} in ${redditScrapeTimeMs}ms`
+        );
         return {
           content: fullContent.substring(0, 8000),
           redditPost: submission,
           redditComments: rawComments,
           isReddit: true,
+          timeMs: redditScrapeTimeMs,
         };
       } catch (error) {
         console.error(
           `Error fetching Reddit submission with snoowrap for ${currentUrl}:`,
           error
         );
-        return { content: "", isReddit: true };
+        const redditScrapeEndTime = performance.now();
+        const redditScrapeTimeMs = Math.round(
+          redditScrapeEndTime - redditScrapeStartTime
+        );
+        console.log(
+          `❌ Reddit scraping failed for ${currentUrl} in ${redditScrapeTimeMs}ms`
+        );
+        return {
+          content: "",
+          isReddit: true,
+          timeMs: redditScrapeTimeMs,
+        };
       }
     } else {
+      const nonRedditScrapeStartTime = performance.now(); // Start timer for non-Reddit scraping
       // Original logic for non-Reddit URLs
       const urlObj = new URL(currentUrl);
       const isHttps = urlObj.protocol === "https:";
@@ -595,18 +643,26 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
                 .join("\n")
                 .trim();
 
+              const nonRedditScrapeEndTime = performance.now();
               resolve({
                 content,
                 isReddit: false,
+                timeMs: Math.round(
+                  nonRedditScrapeEndTime - nonRedditScrapeStartTime
+                ),
               });
             } catch (error) {
               console.error(
                 `Error parsing content from ${currentUrl}:`,
                 error instanceof Error ? error.message : String(error)
               );
+              const nonRedditScrapeEndTime = performance.now();
               resolve({
                 content: "",
                 isReddit: false,
+                timeMs: Math.round(
+                  nonRedditScrapeEndTime - nonRedditScrapeStartTime
+                ),
               });
             }
           });
@@ -614,18 +670,26 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
 
         req.on("error", (error) => {
           console.error(`Error scraping ${currentUrl}:`, error.message);
+          const nonRedditScrapeEndTime = performance.now();
           resolve({
             content: "",
             isReddit: false,
+            timeMs: Math.round(
+              nonRedditScrapeEndTime - nonRedditScrapeStartTime
+            ),
           });
         });
 
         req.on("timeout", () => {
           console.error(`Timeout scraping ${currentUrl}`);
           req.destroy();
+          const nonRedditScrapeEndTime = performance.now();
           resolve({
             content: "",
             isReddit: false,
+            timeMs: Math.round(
+              nonRedditScrapeEndTime - nonRedditScrapeStartTime
+            ),
           });
         });
 
@@ -637,9 +701,15 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
       `Error scraping ${currentUrl}:`,
       error instanceof Error ? error.message : String(error)
     );
+    const endTime = performance.now(); // End timer for the entire function in case of early error
+    const totalTimeMs = Math.round(endTime - startTime);
+    console.log(
+      `🕐 ❌ Web scraping failed (general error) for ${currentUrl} in ${totalTimeMs}ms`
+    );
     return {
       content: "",
       isReddit: false,
+      timeMs: totalTimeMs,
     };
   }
 }
@@ -689,12 +759,20 @@ app.get(
         auth: apiKey,
       });
 
-      // Make the search request
+      // Make the search request with timing
+      const googleSearchStartTime = performance.now();
       const searchResponse = await customsearch.cse.list({
         cx: cx,
         q: searchQuery,
         num: searchLimit,
       });
+      const googleSearchEndTime = performance.now();
+      const googleSearchTimeMs = Math.round(
+        googleSearchEndTime - googleSearchStartTime
+      );
+      console.log(
+        `🕐 ✅ Google Custom Search completed in ${googleSearchTimeMs}ms`
+      );
 
       const data = searchResponse.data;
 
@@ -815,7 +893,8 @@ app.get(
             process.env.GOOGLE_AI_API_KEY || "missing api key"
           );
           const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash-exp",
+            // model: "gemini-2.0-flash-exp",
+            model: "models/gemini-2.5-flash-lite",
           });
 
           const redditContext = validResults.some((r) => r.isReddit)
@@ -836,14 +915,18 @@ Please provide:
 6. Ideally the recommended products would be from different brands than the original we are finding alternatives for.
 7. DO NOT include the product and/or brand we are asking for alternatives for in the results
 8. DO NOT just suggest brands- instead, infer and provide a suggested model based on the context of the discussion
+9. DO NOT include any extra context in the numbered lists, JUST the brand and model
 
 Format your response as a simple numbered list without additional formatting or information.`;
 
+          const aiStartTime = Date.now();
           const result = await model.generateContent(prompt);
           const response = await result.response;
           aiSummary = response.text();
+          const aiEndTime = Date.now();
+          const aiDuration = aiEndTime - aiStartTime;
 
-          console.log("AI summary generated successfully");
+          console.log(`AI summary generated successfully in ${aiDuration}ms`);
         } catch (error) {
           console.error("Error generating AI summary:", error);
           aiSummary = "Unable to generate AI summary at this time.";
