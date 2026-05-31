@@ -279,6 +279,52 @@ def search_and_fetch_top_level_comments(reddit, query, limit=5, top_level_limit=
     return submissions, total_fetch_and_process_time, total_comments_count, json_object_size
 
 
+def fetch_comments_by_submission_id(reddit, submission_id, top_level_limit=5, reply_limit=3):
+    """Fetch comments for a specific Reddit submission ID,
+    including only TOP X TOP-LEVEL comments and their TOP Y replies.
+    Converts to hierarchical JSON and includes submission title/description."""
+    
+    try:
+        submission = reddit.submission(id=submission_id)
+    except Exception as e:
+        print(f"❌ Error fetching submission {submission_id}: {e}", file=sys.stderr)
+        return None
+
+    submission_data = {
+        'id': submission.id,
+        'title': submission.title,
+        'description': submission.selftext, # Use selftext for description
+        'comments': []
+    }
+
+    submission_comment_count = 0
+    
+    # Only get top_level_limit top-level comments
+    for j, top_level_comment in enumerate(submission.comments):
+        if j >= top_level_limit:
+            break
+        
+        # Skip MoreComments objects
+        if isinstance(top_level_comment, praw.models.MoreComments):
+            continue
+
+        # For top-level comments, we want to fetch their direct replies up to reply_limit, but no further recursion
+        # max_depth=1 means the top-level comment itself (depth 0) and its direct children (depth 1)
+        comment_json = comment_to_json(top_level_comment, current_depth=0, max_depth=1, max_replies_per_level=reply_limit)
+        if comment_json:
+            submission_data['comments'].append(comment_json)
+            # Recursively count comments (even though we only fetch top-level, the structure might have children)
+            def count_recursive_comments(comment_node):
+                count = 1
+                if 'children' in comment_node:
+                    for child in comment_node['children']:
+                        count += count_recursive_comments(child)
+                return count
+            submission_comment_count += count_recursive_comments(comment_json)
+    
+    return submission_data
+
+
 def compare_performance(all_full_time, all_comments_count, all_json_size,
                         top_level_full_time, top_level_comments_count, top_level_json_size):
     """Compare and display performance metrics."""
@@ -364,6 +410,7 @@ def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Reddit Search Performance Tool")
     parser.add_argument("--query", "-q", help="Search query (if not provided, interactive mode)")
+    parser.add_argument("--submission_id", "-s", help="Reddit submission ID to fetch comments for")
     parser.add_argument("--limit", "-l", type=int, default=5, help="Number of submissions to fetch (default: 5)")
     
     args = parser.parse_args()
@@ -376,7 +423,14 @@ def main():
         reddit = create_reddit_instance(config)
         print()
         
-        if args.query:
+        if args.submission_id:
+            # Fetch comments for a specific submission ID
+            submission_data = fetch_comments_by_submission_id(reddit, args.submission_id)
+            if submission_data:
+                print(json.dumps(submission_data, indent=2))
+            else:
+                print(f"❌ Could not fetch data for submission ID: {args.submission_id}", file=sys.stderr)
+        elif args.query:
             # Single query mode
             print("🚀 Running search for: '{}'".format(args.query))
             print()

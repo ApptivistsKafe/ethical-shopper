@@ -99,8 +99,33 @@
   - Updated `Popup.tsx` to utilize `ProductDisplay` and pass product data, and replaced old loading indicators.
   - Refactored `getEthicalIcon` to `getEthicalIconBadge` in `frontend/ethical-shopper-extension/src/components/ProductCard.tsx` to encapsulate the `Badge` component, add `circle` prop, set `backgroundColor` based on ethicality, and include respective icons as children while retaining their styles.
 - **Fetched Documentation for UI Libraries:**
+
   - Used `github.com/upstash/context7-mcp` tool to fetch documentation for Mantine, Lucide Icons, and Tailwind CSS.
   - Summarized installation and setup steps for each library.
+
+- **Implemented Reddit Search API with OAuth Authentication:**
+
+  - Installed `snoowrap` package in backend for Reddit OAuth authentication
+  - Created `/reddit-search` endpoint in `backend/src/index.ts` using snoowrap instead of direct JSON API calls
+  - Added Reddit client initialization with proper credential validation and error handling
+  - Updated `backend/.env.example` with Reddit OAuth credential variables
+  - Endpoint supports query search, subreddit filtering, result limiting, sorting, and time filtering
+  - Created `RedditSearch.tsx` React component with comprehensive search form interface
+  - Updated frontend dev interface with tabbed layout to include Reddit search testing
+  - Created `backend/test-reddit-api.sh` script for command-line API testing
+  - Successfully tested implementation with both backend and frontend interfaces
+
+- **Replaced Reddit HTTP Scraping with snoowrap OAuth API Integration (2025-09-09):**
+  - **Migrated from HTTP scraping to OAuth API**: Replaced conventional HTTP requests to Reddit with proper snoowrap OAuth authentication
+  - **Added Reddit client initialization**: Configured snoowrap with OAuth credentials (client ID, secret, username, password) from environment variables
+  - **Implemented Reddit URL parsing**: Created `extractRedditPostId()` function to extract post IDs from various Reddit URL formats
+  - **Built Reddit post fetching**: Created `fetchRedditPostWithSnoowrap()` function to fetch posts and comments via Reddit API
+  - **Updated scraping logic**: Modified `scrapeUrlEnhanced()` to use snoowrap for Reddit URLs instead of HTTP requests
+  - **Removed legacy Reddit code**: Cleaned up old `.json` URL modification logic and Reddit-specific HTTP headers
+  - **Added comment format conversion**: Created `convertSnoowrapComments()` to convert snoowrap format to expected structure
+  - **Testing and validation**: Created `backend/test-reddit-direct.js` and verified functionality with real Reddit posts
+  - **Eliminated 403 errors**: System now avoids 403 errors that occurred with conventional HTTP requests to Reddit
+  - **API compliance**: Implementation now respects Reddit's API guidelines and rate limits
 
 ## Next Steps
 
@@ -123,6 +148,13 @@
 - **Test Global Pause/Unpause Feature:** (Verify still works in the extension)
 - **Test Conditional Content Script Popup & Dismiss:** (Verify still works)
 - **Test Extension Functionality:** General manual testing.
+
+- **Test Reddit Search API:**
+
+  - Add Reddit OAuth credentials to backend `.env` file
+  - Test Reddit search functionality through both frontend interface and direct API calls
+  - Verify proper error handling for authentication failures
+  - Test various search parameters (subreddits, sorting, time filters)
 
 - **Enhance AI Features (Backend):**
 

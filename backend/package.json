@@ -24,7 +24,6 @@
     "express": "^5.1.0",
     "googleapis": "^159.0.0",
     "openai": "^4.97.0",
-    "snoowrap": "^1.23.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"

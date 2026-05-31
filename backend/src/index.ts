@@ -10,19 +10,10 @@ import https from "https";
 import http from "http";
 import { URL } from "url"; // Import URL
 import parseBodyData from "./parseBodyData.js";
-import snoowrap from "snoowrap";
+import { spawn } from "child_process"; // Import spawn for Python child processes
 
 // Load environment variables
 dotenv.config();
-
-// Initialize snoowrap for Reddit API access
-const reddit = new snoowrap({
-  userAgent: process.env.REDDIT_USER_AGENT!,
-  clientId: process.env.REDDIT_CLIENT_ID!,
-  clientSecret: process.env.REDDIT_CLIENT_SECRET!,
-  username: process.env.REDDIT_USERNAME!,
-  password: process.env.REDDIT_PASSWORD!,
-});
 
 // Initialize Express app
 const app = express();
@@ -368,58 +359,15 @@ app.post(
   })
 );
 
-// Helper function to format parsed Reddit comments for AI context
-function formatCommentsForAI(comments: any[], depth: number = 0): string {
-  if (!Array.isArray(comments)) return "";
-
-  const indent = "  ".repeat(depth);
-  let result = "";
-
-  for (const comment of comments) {
-    if (typeof comment === "string") {
-      // Simple string comment
-      result += `${indent}- ${comment.substring(0, 200)}\n`;
-    } else if (comment && typeof comment === "object") {
-      // Object with body and potentially children
-      if (comment.body) {
-        result += `${indent}- ${comment.body.substring(0, 200)}\n`;
-      }
-      if (comment.children && Array.isArray(comment.children)) {
-        result += formatCommentsForAI(comment.children, depth + 1);
-      }
-    }
-  }
-
-  return result;
-}
-
-// Helper function to count comments in parsed Reddit data
-function countComments(parsedComments: any): number {
-  if (!parsedComments || !parsedComments.children) return 0;
-
-  let count = 0;
-  function countRecursive(comments: any[]): void {
-    for (const comment of comments) {
-      if (typeof comment === "string") {
-        count++;
-      } else if (comment && typeof comment === "object") {
-        if (comment.body) count++;
-        if (comment.children && Array.isArray(comment.children)) {
-          countRecursive(comment.children);
-        }
-      }
-    }
-  }
-
-  countRecursive(parsedComments.children);
-  return count;
-}
-
 // Enhanced scraping function that handles Reddit URLs specially
 interface ScrapeResult {
   content: string;
   redditComments?: any;
-  redditPost?: any; // Added for snoowrap post data
+  redditPost?: {
+    title: string;
+    description: string;
+    id: string;
+  };
   isReddit: boolean;
   timeMs: number;
 }
@@ -439,7 +387,9 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
     const isRedditUrl = currentUrl.includes("reddit.com");
 
     if (isRedditUrl) {
-      console.log(`Reddit URL detected, using snoowrap: ${currentUrl}`);
+      console.log(
+        `Reddit URL detected, using Python PRAW script: ${currentUrl}`
+      );
       const redditScrapeStartTime = performance.now(); // Start timer for Reddit scraping
       const submissionIdMatch = currentUrl.match(
         /(?:reddit.com\/r\/.*?\/\w+\/)([a-z0-9]+)/i
@@ -464,69 +414,75 @@ async function scrapeUrlEnhanced(url: string): Promise<ScrapeResult> {
       const submissionId = submissionIdMatch[1];
 
       try {
-        // Optimized approach: Fetch submission without expanding replies, then limit comments manually
-        const submission: any = await reddit.getSubmission(submissionId);
-        const postContent = `${submission.title}\n${
-          submission.selftext || ""
-        }`.trim();
-
-        // Log comment retrieval metrics for investigation
-        console.log(
-          `🔍 Reddit submission ${submissionId}: Retrieved ${submission.comments.length} top-level comments`
+        const pythonProcess = spawn(
+          "/Users/user/dev/snevil1/backend/src/python/.venv/bin/python",
+          [
+            "/Users/user/dev/snevil1/backend/src/python/search_tool.py",
+            "--submission_id",
+            submissionId,
+          ]
         );
 
-        // Manually limit to top 5 comments by score for better performance
-        const limitedComments = submission.comments
-          .sort((a: any, b: any) => b.score - a.score) // Sort by score descending
-          .slice(0, 5); // Take only top 5 comments
+        let pythonOutput = "";
+        let pythonError = "";
 
-        const rawComments = limitedComments.map((comment: any) => ({
-          author: comment.author.name,
-          body: comment.body,
-          score: comment.score,
-        }));
+        pythonProcess.stdout.on("data", (data) => {
+          pythonOutput += data.toString();
+        });
 
-        // Log total comment processing metrics
-        console.log(
-          `🔍 Reddit submission ${submissionId}: Processing ${rawComments.length} comments (limited from ${submission.comments.length}) for AI analysis`
-        );
+        pythonProcess.stderr.on("data", (data) => {
+          pythonError += data.toString();
+        });
 
-        // Transform rawComments to match the expected input of parseBodyData
-        // The original parseBodyData expects a structure like { data: { children: [{ data: ... }] } }
-        const transformedCommentsForParseBodyData = {
-          data: {
-            children: rawComments.map((comment: any) => ({ data: comment })),
-          },
-        };
-        const parsedComments = parseBodyData(
-          transformedCommentsForParseBodyData
-        );
-
-        let commentsText = "";
-        if (parsedComments && parsedComments.children) {
-          commentsText = formatCommentsForAI(parsedComments.children);
-        }
-
-        const fullContent =
-          postContent + (commentsText ? `\n\nComments:\n${commentsText}` : "");
+        await new Promise<void>((resolve, reject) => {
+          pythonProcess.on("close", (code) => {
+            if (code !== 0) {
+              console.error(`Python script exited with code ${code}`);
+              console.error(`Python stderr: ${pythonError}`);
+              return reject(new Error(`Python script failed: ${pythonError}`));
+            }
+            resolve();
+          });
+          pythonProcess.on("error", (err) => {
+            console.error(`Failed to start Python subprocess: ${err}`);
+            reject(err);
+          });
+        });
 
         const redditScrapeEndTime = performance.now();
         const redditScrapeTimeMs = Math.round(
           redditScrapeEndTime - redditScrapeStartTime
         );
+
+        let parsedPythonOutput;
+        try {
+          parsedPythonOutput = JSON.parse(pythonOutput);
+        } catch (parseError) {
+          console.error("Error parsing Python script output:", parseError);
+          console.error("Python output:", pythonOutput);
+          throw new Error("Failed to parse Python script output.");
+        }
+
         console.log(
           `✅ Reddit scraping completed for ${currentUrl} in ${redditScrapeTimeMs}ms`
         );
+
         return {
-          content: fullContent.substring(0, 8000),
-          redditPost: submission,
-          redditComments: rawComments,
+          content: `${parsedPythonOutput.title}\n${
+            parsedPythonOutput.description || ""
+          }`.trim(),
+          redditComments: parsedPythonOutput.comments,
+          redditPost: {
+            title: parsedPythonOutput.title,
+            description: parsedPythonOutput.description,
+            id: parsedPythonOutput.id,
+          },
           isReddit: true,
           timeMs: redditScrapeTimeMs,
         };
       } catch (error) {
         console.error(
-          `Error fetching Reddit submission with snoowrap for ${currentUrl}:`,
+          `Error fetching Reddit submission with Python script for ${currentUrl}:`,
           error
         );
         const redditScrapeEndTime = performance.now();
@@ -836,9 +792,7 @@ app.get(
           url: post.url,
           title: post.title,
           sourceInfo: sourceInfo,
-          content: result.content,
-          redditComments: result.redditComments,
-          redditPost: result.redditPost,
+          ...result, // Include all properties from ScrapeResult
         };
       });
 
@@ -876,9 +830,7 @@ app.get(
               let sourceInfo = `Source: ${result.title} (${result.url})`;
 
               if (result.isReddit && result.redditComments) {
-                sourceInfo += ` [Reddit post with ${countComments(
-                  result.redditComments
-                )} comments]`;
+                sourceInfo += ` [Reddit post with ${result.redditComments.length} top-level comments]`;
                 // For Reddit posts, include a note about comment analysis
                 contentPreview +=
                   "\n[Reddit comments included for comprehensive analysis]";
@@ -897,7 +849,9 @@ app.get(
             model: "models/gemini-2.5-flash-lite",
           });
 
-          const redditContext = validResults.some((r) => r.isReddit)
+          const redditContext = validResults.some(
+            (r: ScrapeResult) => r.isReddit
+          )
             ? "\n\nNote: Reddit posts include community discussions and user opinions from comments, providing real-world usage insights and recommendations."
             : "";
 

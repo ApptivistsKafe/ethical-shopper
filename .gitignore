@@ -1,5 +1,37 @@
+# Dependencies
+node_modules/
 frontend/ethical-shopper-extension/node_modules
+backend/node_modules
+
+# Build output
+dist/
 frontend/ethical-shopper-extension/dist
 ethical-shopper-extension/dist
-backend/node_modules
 backend/dist
+
+# Environment / secrets — never commit real credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editor / IDE
+.idea/
+.vscode/
+
+# OS junk
+.DS_Store
+**/.DS_Store
+
+# Personal data exports (not for public repo)
+*.csv
+
+# Local scratch / test artifacts
+backend/test-reddit-direct.js
+backend/test-reddit-snoowrap.sh
+backend/test-api.sh
+backend/test-reddit-api.sh
+backend/src/test.json
+backend/src/formatted_test.json
+**/processTestData.ts
