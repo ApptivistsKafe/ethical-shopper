@@ -27,6 +27,9 @@ backend/dist
 # Personal data exports (not for public repo)
 *.csv
 
+# Local planning docs (keep roadmap/monetization notes out of the public repo)
+BACKLOG.md
+
 # Local scratch / test artifacts
 backend/test-reddit-direct.js
 backend/test-reddit-snoowrap.sh
