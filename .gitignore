@@ -22,7 +22,9 @@ backend/dist
 
 # Editor / IDE
 .idea/
-.vscode/
+.vscode/*
+# ...but DO share the (secret-free) MCP server config
+!.vscode/mcp.json
 
 # OS junk
 .DS_Store
