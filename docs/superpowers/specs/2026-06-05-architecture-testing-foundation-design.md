@@ -1,6 +1,6 @@
 # Spec 0 — Architecture & Testing Foundation
 
-**Status:** Draft for review
+**Status:** Draft for final review
 **Date:** 2026-06-05
 **Supersedes:** the current Express monolith backend + scattered LLM calls
 
@@ -8,94 +8,113 @@
 
 ## 1. Goal
 
-Establish the testable, debuggable foundation for Ethical Shopper and prove it with the
-first real vertical slice (detect → extract → score a company's ethics → render). Every
-nondeterministic or external dependency (LLM, web search, database) sits behind an interface
-with a fake, so the whole system can be unit-tested for **zero cost and zero flakiness**, while
-real models are exercised only in a separate, rarely-run eval tier.
+Establish the testable, debuggable foundation for Ethical Shopper and prove it with the first
+real vertical slice (detect → extract → score a company's ethics → render). Every nondeterministic
+or external dependency (LLM, web search, database) sits behind an interface with a fake, so the
+whole system is unit-testable for **zero cost and zero flakiness**, while real models are exercised
+only in a separate, rarely-run eval tier.
 
-This is the thing that makes every later feature (recommendations, personalization, monetization,
-analytics, cross-browser) cheap and safe to build and test.
+This is the foundation that makes every later feature (recommendations, personalization survey,
+monetization, analytics, cross-browser, mobile) cheap and safe to build and test.
 
-## 2. Product context (one paragraph)
+## 2. Product context
 
-A browser extension (Chrome at launch) detects shopping checkout/cart pages, identifies the
-companies/brands the user is buying from, and scores those companies on a set of ethical
-concerns. Unethical companies get a clear color + emoji rating; later specs add real-time
-ethical product alternatives, personalization, affiliate monetization, and analytics. The
-ethics judgement at launch is **company/brand level only** (not per-product).
+A browser extension (Chrome first, multi-browser via WXT) detects shopping checkout/cart pages,
+identifies the companies/brands the user is buying from, and scores those companies on a set of
+ethical concerns. A simple color + emoji rating is shown; users can drill into per-concern
+sub-scores and a plain-language explanation. Later specs add real-time ethical product
+alternatives, a values-personalization survey, affiliate monetization, analytics, and an Expo
+mobile app. Ethics judgement at launch is **company/brand level only** (not per-product).
 
-## 3. Scope of this spec
+## 3. Scope
 
 **In scope (Spec 0 + the core of Spec 1):**
-- Monorepo structure with a shared `core` of domain logic + interfaces.
+- Monorepo (pnpm + Turborepo) with a shared `core` package; `api` (Vercel functions) and a WXT
+  `extension`.
 - The three core interfaces (`ModelProvider`, `ContextSource`, `Store`) + their fakes.
-- The **analyze pipeline**: `extractCart` (generic LLM extraction) → `scoreCompany`
-  (5-level per-category ethics) with **DB-as-cache**.
-- The **ethics data model**: 5-level per-category scores, a *deterministic* derived overall +
-  rating band + color/emoji, and dynamic-category capture.
-- **Personalization data-model support**: full controlled taxonomy stored per company, plus the
-  deterministic per-user weighting/filtering function. (The onboarding survey UI is deferred.)
-- The **thin extension client**: detect checkout → strip HTML → call `/analyze` → render badges
-  in the existing Shadow-DOM popup.
+- The **analyze pipeline**: `extractCart` (generic LLM extraction) → `scoreCompany` (5-level
+  per-category ethics) with **DB-as-cache**.
+- The **ethics data model**: 5-level per-category scores with rationale blurbs, a *deterministic*
+  derived overall + rating band + color/emoji, neutral-category exclusion, and dynamic-category
+  capture. **Political giving is one default-on, rubric-scored category** (coarse LLM version this
+  spec; data enrichment later).
+- **Personalization data-model support**: every company scored across the *full* taxonomy with
+  per-category blurbs cached; the deterministic per-user weighting/filter + summary-composition
+  functions. (The onboarding survey UI is deferred; default weights apply for now.)
+- The **thin extension client**: detect checkout → strip HTML → call `/analyze` → render the
+  progressive-disclosure rating UI in the Shadow-DOM popup.
 - The **two-tier test harness** (Tier 1 deterministic + Tier 2 real-LLM eval) and page fixtures.
 - Vercel serverless deploy + Postgres.
 
 **Out of scope (later specs — tracked in Linear/BACKLOG.md):**
 - `/recommend` + web-search context (Spec 2), Reddit source.
-- Personalization onboarding survey UI + profile storage (fast-follow).
-- Monetization/affiliate (Spec 3), analytics (Spec 4), cross-browser (Spec 5).
+- Personalization onboarding **survey UI** + profile storage (fast-follow).
+- **Political-giving data enrichment**: OpenSecrets/FEC + published progressive scorecards →
+  per-candidate progressive scores → company aggregate (fast-follow).
+- Monetization/affiliate (Spec 3), analytics (Spec 4), additional browsers beyond the WXT baseline
+  + **Expo mobile** (later), web app (later).
 - Deterministic (non-LLM) page parser, model router, streaming, Redis, Tier-3 Playwright e2e,
-  dynamic-category approval UI. (All deliberately deferred per the simplification pass.)
+  dynamic-category approval UI.
 
 ## 4. Architecture
 
 ### 4.1 Two halves
 
-**Thin extension client** (reuse existing React/Mantine/Shadow-DOM work):
+**Thin extension client** (reuse existing React/Shadow-DOM UI, re-homed into **WXT**):
 - Content script: detect checkout → capture + strip page HTML (reuse/improve `processHtmlForAI`)
-  → `POST /analyze` → render rating badges in the Shadow-DOM popup.
+  → `POST /analyze` → render the rating UI in the Shadow-DOM popup.
 - No secrets, no LLM logic, no business rules. A sensor + a renderer.
 
 **Smart backend** (new clean core, TypeScript, Vercel serverless functions):
-- Small modules, each behind an interface, wired together by thin HTTP handlers.
+- Small modules behind interfaces, wired by thin HTTP handlers.
 
 ### 4.2 Module boundaries
 
 | Module | Interface | Real implementation (launch) | Test fake |
 |---|---|---|---|
-| Model calls | `ModelProvider.complete()` | OpenRouter (single provider) | `FakeModelProvider` (scripted) |
-| Extraction | `extractCart(markdown, provider)` | generic LLM (cheap model) | uses fake provider |
+| Model calls | `ModelProvider.complete()` | OpenRouter (BYOK) | `FakeModelProvider` (scripted) |
+| Extraction | `extractCart(markdown, provider)` | generic LLM (Gemini 2.5 Flash-Lite) | uses fake provider |
 | Ethics scoring | `scoreCompany(company, provider, store)` | LLM + cache | fakes |
-| Recommendation context | `ContextSource.search()` | `WebSearchSource` (on) — *interface only this spec* | `FakeContextSource` |
-| Persistence / cache | `Store` (companies, analytics) | `PostgresStore` | `InMemoryStore` |
+| Recommendation context | `ContextSource.search()` | *interface + fake only this spec* | `FakeContextSource` |
+| Persistence / cache | `Store` | `PostgresStore` | `InMemoryStore` |
 
-> Note: the `recommend()` module and a real `WebSearchSource` are designed here but **implemented
-> in Spec 2**. This spec only lands the `ContextSource` interface + fake so the seam exists.
+> `recommend()` and a real `WebSearchSource` are designed here but **implemented in Spec 2**. This
+> spec lands only the `ContextSource` interface + fake so the seam exists.
 
-### 4.3 Proposed repo structure
+### 4.3 Repo structure (pnpm + Turborepo)
 
 ```
 ethical-shopper/
-  core/        # shared TS: domain types, Zod schemas, interfaces, pure logic
-               #   (scoring math, per-user weighting, color/emoji). No build step;
-               #   imported via TS path alias by both api/ and extension/.
-  api/         # Vercel serverless functions (thin handlers): /analyze (+ /recommend later)
-  extension/   # the React/Shadow-DOM extension (migrated from frontend/ethical-shopper-extension)
-  docs/
+  packages/
+    core/          # shared TS: domain types, Zod schemas, interfaces, pure logic
+                   #   (scoring rollup, per-user weighting, summary composition, color/emoji)
+  apps/
+    api/           # Vercel serverless functions (thin handlers): /analyze (+ /recommend later)
+    extension/     # WXT browser extension (Chrome first; Firefox/Safari/etc. from one codebase)
+  turbo.json
+  pnpm-workspace.yaml
 ```
 
-**Migration note / decision point:** today the repo has `backend/` (Express, to be replaced) and
-`frontend/ethical-shopper-extension/` (the UI, to keep). The first implementation step relocates
-the UI to `extension/` and rebuilds `backend/` as `api/` functions. If you'd rather minimize
-churn, we can keep the existing folder names and only add `core/` — flag your preference in review.
+- **Turborepo** (free/OSS) orchestrates build/test/lint with content-hashed incremental builds;
+  remote caching is optional and off until builds feel slow.
+- **WXT** for the extension: Vite-based, file-based entrypoints (auto-manifest), content-script-UI
+  helpers for the Shadow-DOM injection, and one codebase → 7 browsers. Retires the hand-rolled
+  webpack config.
+- **Mobile/web later:** an Expo app (and an eventual web app) drop in under `apps/` and share
+  `core`. Known pnpm/Metro wrinkle for RN (`node-linker=hoisted`) is handled then, not now.
+- **Vercel deploy:** only `apps/api` is a Vercel Project (root directory `apps/api`); the extension
+  builds in the Turbo pipeline but ships to the browser stores, not Vercel.
+
+**Migration note:** the first implementation step relocates today's `backend/` → `apps/api`
+(rebuilt as functions) and `frontend/ethical-shopper-extension/` → `apps/extension` (re-homed into
+WXT, reusing the React/Shadow-DOM components).
 
 ### 4.4 The load-bearing principle
 
 A test constructs a real module (e.g. `scoreCompany`) with a `FakeModelProvider` and
 `InMemoryStore`, feeds a known company, and asserts exact behavior — caching, error handling,
-malformed-JSON recovery, score math — with **no API cost and no flakiness**. Real providers are
-swapped in only for the eval tier.
+malformed-JSON recovery, rollup math, neutral exclusion — with **no API cost and no flakiness**.
+Real providers are swapped in only for the eval tier.
 
 ## 5. Data model
 
@@ -106,7 +125,7 @@ Cart {
   items: Array<{
     name: string
     brand: string | null
-    sellingCompany: string   // the retailer/site
+    sellingCompany: string
     price: number | null
     url: string | null
     requiredAttributes?: { type?: string; size?: string }  // carried for Spec 2 recs
@@ -118,164 +137,224 @@ Cart {
 ### 5.2 Ethics model (5-level, per-category, deterministic rollup)
 
 Reuse the existing `EthicalStatus` enum (`Poor` … `Excellent`). The model supplies **per-category**
-ratings; the headline rating is **computed**, never model-guessed.
+ratings + a short blurb; the headline rating is **computed**, never model-guessed.
 
 ```ts
 EthicsReport {
   company: { name: string; domain: string | null; aliases: string[] }
   categories: Array<{
-    id: CategoryId        // from a controlled seed taxonomy (see 5.3)
-    score: EthicalStatus  // 5-level
-    rationale: string     // short, model-provided
-    confidence: number    // 0–1, model-provided; low-confidence can be down-weighted
+    id: CategoryId
+    score: EthicalStatus | null   // null = NEUTRAL / no notable action → excluded from rollup & UI
+    blurb: string                 // 1–2 sentence plain-language rationale, model-provided
+    confidence: number            // 0–1
+    sources?: string[]
   }>
-  overallScore: EthicalStatus   // DETERMINISTIC weighted rollup of category scores
-  ratingBand: EthicalStatus     // == overallScore; drives color + emoji (pure function)
-  suggestedNewCategory?: { label: string; rationale: string }  // queued for human review, NOT auto-applied
-  meta: { modelUsed: string; scoredAt: string; sources: string[]; cacheKey: string }
+  overallScore: EthicalStatus     // DETERMINISTIC weighted rollup over non-neutral categories
+  ratingBand: EthicalStatus       // == overallScore; drives color + emoji (pure function)
+  suggestedNewCategory?: { label: string; rationale: string }  // queued for review, NOT auto-applied
+  meta: { modelUsed: string; scoredAt: string; cacheKey: string }
 }
 ```
 
-- `overallScore`, `ratingBand`, color, and emoji are **pure functions of the category scores** →
-  fully Tier-1 testable, explainable ("Concerning because labor=Poor, climate=Concerning").
-- Map 5-level → numeric internally (Poor=1 … Excellent=5) for the weighted average, then map back
-  to the nearest band.
+Deliberate choices that pay off:
+- **Neutral categories (`score: null`) are excluded** from both the rollup and the UI. Most
+  companies are neutral on most concerns absent direct action; excluding them means the overall
+  reflects where a company *actually* has impact instead of regressing to a mushy middle.
+- `overallScore`, `ratingBand`, color, and emoji are **pure functions of the non-neutral category
+  scores + weights** → fully Tier-1 testable and explainable.
+- **Per-category weights** are configurable and need *not* be equal (see §5.4 — political giving
+  carries a heavier default weight).
+- Map 5-level → numeric (Poor=1 … Excellent=5) for the weighted average, then back to the nearest
+  band.
 
 ### 5.3 Controlled taxonomy + dynamic categories
 
-- A **controlled seed taxonomy** of concern categories (e.g. `labor`, `climate`,
-  `political_donations`, `animal_welfare`, `data_privacy_surveillance`,
-  `governance_anticompetitive`) lives in `core` config with default weights.
-- Companies are **always scored across the full taxonomy** (so personalization can re-weight later
-  with no re-scoring).
-- When the model proposes a dimension outside the taxonomy, it returns `suggestedNewCategory`,
-  which is **logged/queued for human review** — it does not change scoring. (Approval UI deferred.)
+- A **controlled seed taxonomy** of concern categories lives in `core` config with default weights
+  and a rubric definition per category (the rubric text is what makes the LLM score consistently).
+  Seed set (starting point, ~6–10): `labor`, `climate`, `political_giving`, `animal_welfare`,
+  `data_privacy_surveillance`, `governance_anticompetitive`, `supply_chain`.
+- Companies are **always scored across the full taxonomy** (so personalization re-weights with no
+  re-scoring). Categories with no notable action come back `score: null` (neutral).
+- **Dynamic categories:** when the model flags a relevant dimension outside the taxonomy, it returns
+  `suggestedNewCategory`. Users can also submit suggestions in-extension. Both flow into one
+  **suggestion log** (`{company, rawLabel, rationale, source: model|user, timestamp}`), normalized
+  (lowercased/canonicalized) for a frequency **rollup**. Suggestions never auto-change scoring;
+  approval (and the review UI) is deferred. Dedupe starts as normalized-string grouping; embeddings
+  are an explicit non-goal for now.
 
-### 5.4 Personalization (data-model support only this spec)
+### 5.4 Political giving (launch-coarse → enrichment later)
 
-- Company category scores are **intrinsic and shared** across all users (scored once, cached).
-- A user's values are a set of `{ categoryId: weight }`. The displayed overall is the **user's
-  weights applied to the company's stored category scores** — a pure, deterministic function with
-  **zero extra LLM cost per user**. Default weights apply when no profile exists.
-- This spec ships the weighting/filter function + types. The **onboarding survey UI + profile
-  storage** are a fast-follow spec.
+- This spec: `political_giving` is **one default-on category, scored by the same rubric mechanism**
+  as the others — the LLM gathers what it can about a company's political/civic giving and scores
+  it against an explicit, principle-anchored rubric (democracy, civil rights, rule of law,
+  anti-corruption, scientific integrity), returning a blurb + sources. It carries a **heavier
+  default weight**, reflecting that political giving is often a company's largest real lever across
+  many issues.
+- The rubric is framed around **supporting progressive candidates/causes**, not party labels — the
+  judgment is "did this giving advance the stated principles," shown with reasoning + sources.
+- **Enrichment (later spec):** replace coarse LLM judgment with hard data — **OpenSecrets/FEC**
+  donation records → recipients → a **per-candidate progressive score** composed from published
+  scorecards (LCV, ACLU, NAACP, Planned Parenthood, Progressive Punch, etc.) → a **single signed,
+  continuous** company score (pro-progressive positive, anti-progressive negative, scaled by
+  progressiveness × dollars). This is a constructed, transparent index we own.
+- **Stance:** the app holds an owned, principle-anchored point of view here; it is transparent and
+  sourced (defensible, not "controversy-free"), and the political dimension is one weighted category
+  users can dial down/off — but the app does not ship an inverted (reward-anti-progressive) lens.
 
-### 5.5 Schemas
+### 5.5 Personalization (data-model support this spec)
 
-Every model output is validated with a **Zod schema** that is **shared between runtime and tests**,
-so the contract and the code cannot drift. Invalid output is caught and handled (see §7).
+- Company category scores **and per-category blurbs** are **intrinsic, shared, and cached** (scored
+  once across the full taxonomy).
+- A user's values = `{ categoryId: weight }`. At display time, pure deterministic functions:
+  1. **Re-weight** the non-neutral category scores by the user's weights → personalized
+     `overallScore`/band (default weights when no profile).
+  2. **Filter** the sub-score list to the non-neutral categories the user cares about.
+  3. **Compose** the plain-language explanation by stitching together the cached per-category
+     **blurbs** for only those categories.
+- **Zero extra LLM cost per user.** The survey UI + profile storage are a fast-follow; this spec
+  ships the functions + types + default weights.
+
+### 5.6 Schemas
+
+Every model output is validated with a **Zod schema shared between runtime and tests**, so contract
+and code cannot drift. Invalid output is caught and handled (see §9).
 
 ## 6. Pipeline & data flow
 
 ```
 [extension] detect checkout → strip HTML → markdown
-   │ POST /analyze {markdown, url}
+   │ POST /analyze {markdown, url, userWeights?}
 [api] extractCart(markdown)            ← cheap model, cached by content-hash
       → for each distinct company:
-        scoreCompany(company)           ← DB-as-cache: hit = no LLM; miss = score + persist
-   │ returns { cart, reports[] }  (overall + band computed per default or supplied weights)
-[extension] render color + emoji badges in the Shadow-DOM popup
+        scoreCompany(company)           ← DB-as-cache: hit = no LLM; miss = score full taxonomy + persist (scores+blurbs)
+      → applyUserView(reports, userWeights)   ← pure: re-weight + filter + compose summary
+   │ returns { cart, views[] }   (overall band + emoji/color + filtered sub-scores + composed explanation)
+[extension] render the progressive-disclosure rating UI
 ```
 
-- **Staged & cache-first.** Popular retailers are usually a cache hit → zero LLM cost. Only
-  genuinely new companies pay for a model call.
-- `/recommend` is a **separate** staged endpoint added in Spec 2; the extension calls it only when
-  a company is below threshold. Designed now, not built now.
-- **No streaming** at launch (simpler to debug); revisit only if function timeouts bite.
+- **Staged & cache-first.** Popular retailers are usually a cache hit → zero LLM cost. Only new
+  companies pay for a model call, and they pay *once* (full taxonomy), reused for everyone.
+- `/recommend` is a separate staged endpoint added in Spec 2 (designed now, not built now).
+- **No streaming** at launch.
 
-## 7. Error handling
+## 7. Presentation / UX (progressive disclosure)
 
-- **Malformed model JSON:** Zod validation fails → one bounded repair retry (re-prompt) → if still
-  invalid, return a typed "could not assess" result; never throw raw to the client.
-- **Cache miss / store error:** scoring proceeds; a store write failure logs + degrades to
-  uncached (still returns a result).
-- **Partial cart:** companies that fail extraction/scoring are returned with an explicit
-  `unassessed` status rather than dropping the whole response.
-- **Provider/network failure:** typed error surfaced to the extension, which renders a neutral
-  "couldn't check" state (the popup never breaks the host page).
+Hide the complexity; surface it on demand.
+- **Top level:** a single ethical score as **color + emoji** (smiley→frowny via the existing
+  `EthicalStatus` color map).
+- **Expand (dropdown):** per-concern **sub-scores**, showing **only** categories that are (a)
+  non-neutral for this company **and** (b) of interest to this user. Neutral/uninterested concerns
+  are simply absent.
+- **Info icon (?):** opens a **plain-language explanation** of how the scores were reached —
+  composed at display time from the cached per-category blurbs for the shown concerns, so it's
+  specific to what *this* user cares about.
+- All of this is a pure function of the cached `EthicsReport` + the user's weights — no extra
+  model calls to expand or explain.
 
-## 8. Caching / persistence
+## 8. Determinism & consistency (the "not AI-sloppy" guarantees)
 
-- **DB-as-cache.** One durable Postgres row per company holding its per-category scores + `scoredAt`.
-  A configurable staleness window (e.g. N days) triggers re-scoring on read. This *is* the cache —
-  **no separate Redis at launch** (`Store` interface allows adding it later with no refactor).
+- **Cache is the primary guarantee:** a scored company is reused verbatim until inputs change or it
+  goes stale → "same company → same score" by construction.
+- **Temperature 0** on scoring for near-deterministic re-scores.
+- **Rubric-anchored scoring** with per-category definitions + anchor examples → consistent,
+  comparable scores across companies (the eval tier asserts bands *and* relative ordering).
+- **Mandatory blurb + confidence** per category; the overall is deterministic, explainable math.
+
+## 9. Error handling
+
+- **Malformed model JSON:** Zod fails → one bounded repair retry → else a typed "could not assess"
+  result; never throw raw to the client.
+- **Cache/store error:** scoring proceeds; a write failure logs + degrades to uncached.
+- **Partial cart:** companies that fail are returned `unassessed`, not dropped.
+- **Provider/network failure:** typed error → the extension renders a neutral "couldn't check"
+  state; the popup never breaks the host page.
+
+## 10. Caching / persistence
+
+- **DB-as-cache.** One durable Postgres row per company holding per-category scores **+ blurbs** +
+  `scoredAt`; a configurable staleness window triggers re-scoring on read. This *is* the cache —
+  **no Redis at launch** (`Store` allows adding it later with no refactor).
 - Extraction results cached by page-content hash (short TTL).
-- Tests use `InMemoryStore`; production uses `PostgresStore`. Identical interface.
+- Tests use `InMemoryStore`; production `PostgresStore`. Identical interface.
 
-## 9. LLM provider strategy
+## 11. LLM provider strategy
 
-- **Single provider via OpenRouter** at launch (one integration, many models; fewer SDKs). The
-  `ModelProvider` interface allows adding Gemini-direct/OpenAI-direct later.
-- **Extraction model: Gemini 2.5 Flash-Lite** (cheap, fast, structured-JSON output) as the default;
-  configurable per step.
-- **No router** (cheap→escalate) at launch — a single configured model per step; routing is a
-  deferred cost optimization.
+- **`ModelProvider` interface always** (the testing seam — non-negotiable, independent of vendor).
+- **OpenRouter with BYOK** as the launch implementation: one integration for any model, fallbacks,
+  and **~$0 fee under 1M req/mo** with pass-through pricing — ideal for the prompt-tuning phase.
+- **Extraction model: Gemini 2.5 Flash-Lite** (cheap, fast, structured JSON); configurable per step.
+- **Prompt caching passes through** OpenRouter (provider discounts + sticky routing), but our
+  dominant cost lever is the **DB cache** (a known company isn't called at all).
+- **No router** (cheap→escalate) at launch — one configured model per step.
+- Swapping to direct providers or an open-weight model (for cheapest-provider routing) later is a
+  one-line change behind the interface.
 
-## 10. Testing strategy
+## 12. Testing strategy
 
 ### Tier 1 — Deterministic (every commit, zero cost, zero flakiness)
-- **Pure logic/contract tests:** score rollup math, 5-level↔numeric mapping, color/emoji, per-user
-  weighting, cache-key derivation, dedup, malformed-JSON recovery.
-- **Pipeline tests with `FakeModelProvider`:** script known/broken model output, assert *system*
-  behavior (caching, dedup, "Reddit off", graceful degradation).
-- **Schema guards:** valid output → correct domain objects; invalid output → caught + handled.
+- **Pure logic/contract tests:** rollup math, 5-level↔numeric, neutral exclusion, per-user
+  weighting, summary composition, color/emoji, cache-key derivation, dedup, malformed-JSON recovery.
+- **Pipeline tests with `FakeModelProvider`:** scripted known/broken output → assert *system*
+  behavior (caching, full-taxonomy scoring, graceful degradation, user-view filtering).
+- **Schema guards:** valid output → correct domain objects; invalid → caught + handled.
 - **Extension client tests (vitest + jsdom):** detector logic, rendering for a known `/analyze`
-  response, paused-state behavior. (Extend the existing tests.)
+  response, expand/info interactions, paused-state.
 - **Fixtures:** `fixtures/pages/` of real saved shopping-page HTML; extraction tests run the *real*
-  stripping (`processHtmlForAI`) against a *fake* model.
+  stripping against a *fake* model.
 
-### Tier 2 — Real-LLM eval (manual/scheduled, budget-capped; NOT in the normal CI gate)
+### Tier 2 — Real-LLM eval (manual / scheduled, budget-capped; NOT in the CI gate)
 - `npm run eval`, split into:
-  - **Hard contract (must pass):** real output parses against the Zod schema; scores in range;
-    required fields present.
-  - **Soft quality (directional, aggregated):** a curated set of known companies must land in
-    expected score **bands** (e.g. Patagonia ≥ Good; a known severe bad-actor ≤ Concerning),
-    asserted as the **median over N runs** at temperature 0; plus an **LLM-as-judge** for
-    qualitative checks with a tunable **warn-vs-fail** threshold.
-  - **Cost governor:** tracks token spend, supports `--sample N` + a hard budget ceiling, logs a
-    human-readable report.
+  - **Hard contract (must pass):** real output parses against Zod; scores in range; required fields.
+  - **Soft quality (directional, aggregated):** curated known companies land in expected **bands**
+    (e.g. Patagonia ≥ Good; a known severe bad-actor ≤ Concerning) as the **median over N runs** at
+    temp 0; plus relative-ordering checks; plus an **LLM-as-judge** for blurb quality with a tunable
+    **warn-vs-fail** threshold.
+  - **Cost governor:** token-spend tracking, `--sample N`, hard budget ceiling, human-readable
+    report.
 
 ### Tier 3 — Browser e2e (Playwright / Cloud Cowork)
-Deferred to a later spec; designed-for but not built here.
+Designed-for, deferred to a later spec.
 
-## 11. Hosting / deployment
+## 13. Hosting / deployment
 
-- **Vercel serverless** for `api/` (scales to zero — matches the cost concern; great DX).
-- **Managed Postgres** for cached ethics + (later) analytics.
-- All storage behind the `Store` interface; tests never touch real infra.
-- **Escape hatch:** if always-on background cache-warming/queues are later needed, add a small
-  persistent worker alongside Vercel without rewriting the core.
+- **Vercel serverless** for `apps/api` (scales to zero — matches the cost concern; turnkey
+  Turborepo deploy). **Managed Postgres** for cached ethics + (later) analytics.
+- All storage behind `Store`; tests never touch real infra.
+- **Escape hatch:** if always-on cache-warming/queues are later needed, add a small persistent
+  worker alongside Vercel without rewriting the core.
 
-## 12. Simplifications adopted (and why)
+## 14. Simplifications adopted
 
-| Cut/deferred | Replaced with at launch |
+| Cut/deferred | Launch choice |
 |---|---|
 | Redis/KV hot cache | Postgres row + index |
 | Model router | one configured model per step |
 | Streaming responses | plain request/response |
-| 3 model providers | single OpenRouter integration |
+| 3 model providers | single OpenRouter (BYOK) integration |
 | 10-level scoring | existing 5-level enum |
-| `core` as a published package | a `core/` folder via TS path alias |
-| Multi-source context now | one `ContextSource` interface + fake (Web/Reddit later) |
+| Political per-candidate data pipeline | coarse LLM rubric category (OpenSecrets enrichment later) |
+| Personalization survey UI | default weights + the deterministic weighting/compose functions |
+| Hand-rolled extension webpack | WXT |
 | Graph DB for recs | Postgres relations |
 
-## 13. Assumptions & open questions (please confirm in review)
+## 15. Decisions & remaining notes
 
-1. **Repo layout:** proposed `core/` + `api/` + `extension/` (relocating the current `backend/` and
-   `frontend/ethical-shopper-extension/`). Acceptable, or keep existing folder names + only add `core/`?
-2. **OpenRouter** is the single launch provider (uses your existing OpenRouter key); Gemini
-   2.5 Flash-Lite as the default extraction model. OK?
-3. **Eval cadence:** `npm run eval` is manual + optionally a scheduled (e.g. weekly) run; never in
-   the per-commit gate. OK?
-4. The **seed taxonomy** in §5.3 is a starting set; final categories/weights to be refined.
+- **Repo:** pnpm + Turborepo; `packages/core`, `apps/api`, `apps/extension` (WXT); Expo/web later.
+- **Provider:** OpenRouter BYOK + Gemini 2.5 Flash-Lite.
+- **Eval cadence:** `npm run eval` manual + optional weekly schedule; never per-commit.
+- **Seed taxonomy/weights** in §5.3 are a living starting point to refine (incl. the heavier
+  `political_giving` default weight).
 
-## 14. Success criteria
+## 16. Success criteria
 
-- `extractCart` and `scoreCompany` run end-to-end against a fixture page with a `FakeModelProvider`
-  and `InMemoryStore`, fully deterministically, in CI.
-- The extension renders a correct color+emoji badge for a known `/analyze` response (Tier-1).
+- `extractCart` + `scoreCompany` run end-to-end against a fixture page with `FakeModelProvider` +
+  `InMemoryStore`, fully deterministically, in CI.
+- The extension renders a correct color+emoji top score for a known `/analyze` response, expands to
+  the right filtered sub-scores, and shows a composed explanation — all Tier-1.
+- A second lookup of the same company is served from Postgres with no model call.
+- Re-weighting a report for two different user-weight sets changes the overall + sub-score list
+  deterministically, with no model call.
 - `npm run eval` produces hard-contract pass/fail + a directional quality report under a budget cap.
-- A second company lookup is served from the Postgres cache with no model call.
-- Deploys to Vercel; the Chrome extension talks to the deployed `/analyze`.
-- A new contributor can open `api/` and see one provider, one store, a few pure functions, and
+- Deploys to Vercel; the WXT Chrome build talks to the deployed `/analyze`.
+- A new contributor opens `apps/api` and sees one provider, one store, a few pure functions, and
   fakes — not a framework.
