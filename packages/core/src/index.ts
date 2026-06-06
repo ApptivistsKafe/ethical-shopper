@@ -1,0 +1,51 @@
+// Types
+export * from './types.js'
+
+// Taxonomy
+export { TAXONOMY, getTaxonomyEntry, ALL_CATEGORY_IDS } from './taxonomy.js'
+export type { TaxonomyEntry } from './taxonomy.js'
+
+// Scoring & presentation (pure functions)
+export {
+  computeOverallScore,
+  numericToEthicalStatus,
+  ethicalStatusToNumeric,
+  filterVisibleCategories,
+  composeExplanation,
+  buildCompanyView,
+  getEthicalStatusColor,
+  getEthicalStatusStrokeColor,
+  getEthicalStatusEmoji,
+  buildCompanyCacheKey,
+} from './scoring.js'
+
+// Schemas (Zod)
+export {
+  EthicalStatusSchema,
+  CategoryIdSchema,
+  CategoryScoreSchema,
+  EthicsReportSchema,
+  ModelScoringResponseSchema,
+  CartSchema,
+  CartItemSchema,
+  CategorySuggestionSchema,
+  parseScoringResponse,
+  parseCart,
+} from './schemas.js'
+export type { ModelScoringResponse, CartSchemaType } from './schemas.js'
+
+// Interfaces
+export type {
+  ModelProvider,
+  ModelMessage,
+  ModelOptions,
+  ModelResponse,
+  Store,
+  ContextSource,
+  SearchResult,
+  ExtractCartFn,
+  ScoreCompanyFn,
+} from './interfaces.js'
+
+// Suggestions
+export { normalizeSuggestionLabel, buildSuggestion } from './suggestions.js'
