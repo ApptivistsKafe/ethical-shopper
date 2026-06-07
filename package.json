@@ -6,6 +6,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:core": "pnpm --filter @ethical-shopper/core test",
+    "test:api": "pnpm --filter @ethical-shopper/api test",
     "lint": "turbo run lint",
     "dev": "turbo run dev"
   },

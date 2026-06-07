@@ -1,12 +1,16 @@
 import { z } from 'zod'
-import { EthicalStatus } from './types.js'
+import { EthicalStatus, type CategoryId } from './types.js'
 import { ALL_CATEGORY_IDS } from './taxonomy.js'
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
 export const EthicalStatusSchema = z.nativeEnum(EthicalStatus)
 
-export const CategoryIdSchema = z.enum(ALL_CATEGORY_IDS as [string, ...string[]])
+// Preserve the CategoryId literal union so z.infer gives 'labor' | 'climate' | ...
+// rather than plain string — needed for type-safe assignment to CategoryScore.id.
+export const CategoryIdSchema = z.enum(
+  ALL_CATEGORY_IDS as unknown as [CategoryId, ...CategoryId[]],
+)
 
 // ─── Category Score ───────────────────────────────────────────────────────────
 

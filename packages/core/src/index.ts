@@ -49,3 +49,7 @@ export type {
 
 // Suggestions
 export { normalizeSuggestionLabel, buildSuggestion } from './suggestions.js'
+
+// In-memory Store — a real (non-fake) implementation suitable for dev/demo environments
+// where persistence across restarts is not required.
+export { InMemoryStore } from './fakes/InMemoryStore.js'
