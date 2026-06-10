@@ -38,6 +38,10 @@ export async function saveUserWeights(weights: UserWeights): Promise<void> {
 }
 
 /** Convenience for the options UI: weight currently in effect for a category. */
-export function effectiveWeight(weights: UserWeights, id: CategoryId, defaultWeight: number): number {
+export function effectiveWeight(
+  weights: UserWeights,
+  id: CategoryId,
+  defaultWeight: number,
+): number {
   return weights[id] ?? defaultWeight
 }

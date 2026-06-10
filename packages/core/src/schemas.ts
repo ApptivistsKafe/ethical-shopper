@@ -8,9 +8,7 @@ export const EthicalStatusSchema = z.nativeEnum(EthicalStatus)
 
 // Preserve the CategoryId literal union so z.infer gives 'labor' | 'climate' | ...
 // rather than plain string — needed for type-safe assignment to CategoryScore.id.
-export const CategoryIdSchema = z.enum(
-  ALL_CATEGORY_IDS as unknown as [CategoryId, ...CategoryId[]],
-)
+export const CategoryIdSchema = z.enum(ALL_CATEGORY_IDS as unknown as [CategoryId, ...CategoryId[]])
 
 // ─── Category Score ───────────────────────────────────────────────────────────
 
@@ -98,10 +96,7 @@ export type CartSchemaType = z.infer<typeof CartSchema>
  * in scoring (defense in depth) — negative weights would invert category
  * polarity, which is explicitly disallowed.
  */
-export const UserWeightsSchema = z.record(
-  CategoryIdSchema,
-  z.number().min(0).max(10),
-)
+export const UserWeightsSchema = z.record(CategoryIdSchema, z.number().min(0).max(10))
 
 export const AnalyzeRequestSchema = z.object({
   markdown: z.string().min(1).max(200_000),

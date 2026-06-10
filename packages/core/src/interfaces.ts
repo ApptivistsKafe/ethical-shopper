@@ -56,7 +56,11 @@ export interface Store {
    * plus all raw user suggestions (NOT deduped — frequency is the signal).
    */
   getSuggestions(): Promise<{
-    modelSuggestions: Array<{ normalizedLabel: string; count: number; examples: CategorySuggestion[] }>
+    modelSuggestions: Array<{
+      normalizedLabel: string
+      count: number
+      examples: CategorySuggestion[]
+    }>
     userSuggestions: CategorySuggestion[]
   }>
 }

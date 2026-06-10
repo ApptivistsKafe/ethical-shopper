@@ -1,4 +1,9 @@
-import type { ModelProvider, ModelMessage, ModelOptions, ModelResponse } from '@ethical-shopper/core'
+import type {
+  ModelProvider,
+  ModelMessage,
+  ModelOptions,
+  ModelResponse,
+} from '@ethical-shopper/core'
 
 export interface OpenRouterConfig {
   /** OpenRouter model identifier, e.g. "google/gemini-2.5-flash-lite" */

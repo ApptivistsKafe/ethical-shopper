@@ -358,3 +358,49 @@ Designed-for, deferred to a later spec.
 - Deploys to Vercel; the WXT Chrome build talks to the deployed `/analyze`.
 - A new contributor opens `apps/api` and sees one provider, one store, a few pure functions, and
   fakes — not a framework.
+
+## 17. Addendum — decisions adopted during implementation (2026-06-10)
+
+These supersede the corresponding rows in §14 and reflect what is actually built.
+
+1. **Neutral-as-midpoint rollup.** Neutral (`null`) categories are INCLUDED in the weighted
+   rollup at `NEUTRAL_ROLLUP_VALUE = 3` (the Mixed midpoint) but EXCLUDED from the UI. This
+   prevents a company with one bad category (rest neutral) from rating worse than a company
+   that is broadly mediocre across all categories. Verified by the "breadth test" in
+   `packages/core/tests/scoring.test.ts`.
+
+2. **Suggestion dedup is asymmetric.** Model-suggested categories are deduplicated by
+   `normalizedLabel` (with a frequency count); user-submitted suggestions are ALL retained —
+   submission frequency is the prioritization signal for taxonomy review. Users submit via the
+   panel footer → `POST /api/suggest`.
+
+3. **Two-model pipeline.** Extraction uses a cheap fast model (default
+   `google/gemini-2.5-flash-lite`, 12s timeout); scoring uses a stronger model (default
+   `anthropic/claude-sonnet-4-5`, 30s timeout) optionally enriched with Brave web search.
+   Both configurable via `EXTRACTION_MODEL` / `SCORING_MODEL` env vars; both retry once on
+   timeout/5xx, never on 4xx.
+
+4. **Streaming /analyze (reverses the §14 deferral).** The endpoint streams NDJSON events
+   (`cart` → N×`companyView` → `done`, with per-company `error` events) via Vercel response
+   streaming (`supportsResponseStreaming: true`). The extension consumes the stream with a
+   chunk-safe async generator and renders company cards as they resolve.
+
+5. **Brands are scored, not just sellers.** `companiesToScore` scores unique sellers AND unique
+   brands (capped at 8 companies/request, sellers first) — on a marketplace cart the brands
+   are the signal, the marketplace is one row.
+
+6. **Security hardening (new).**
+   - All untrusted text (page markdown, search snippets) passes through
+     `sanitizeUntrustedText` (invisible/bidi Unicode stripping, control chars, data-URIs,
+     token/line/length caps, repeated-line dedup) and is wrapped in untrusted-data delimiters;
+     system prompts carry explicit injection-hardening instructions.
+   - User weights are Zod-validated at the API boundary AND clamped in core
+     (`clampUserWeight`, range [0, 10]) — negative weights cannot invert category polarity.
+   - `/analyze` and `/suggest` require a shared `X-ES-Token` when `EXTENSION_API_TOKEN` is set,
+     plus best-effort per-IP rate limiting per warm instance (layer Vercel WAF on top).
+   - Same-company concurrent scoring is single-flighted per instance; model output parsing is
+     fence/prose tolerant (`extractJsonObject`).
+
+7. **Personalization shipped early (reverses the §14 deferral).** The extension options page
+   maps five preference levels (opt-out / 0.5 / default / 2 / 4) to `UserWeights` stored in
+   `chrome.storage.sync`; the content script sends them with each `/analyze` request.

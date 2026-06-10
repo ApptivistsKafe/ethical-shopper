@@ -37,9 +37,9 @@ export default defineContentScript({
       try {
         // Heavy bundle (React + Turndown + panel UI) loads only now, via the
         // web-accessible unlisted script — see entrypoints/panel.ts.
-        const mod = (await import(
-          /* @vite-ignore */ chrome.runtime.getURL('/panel.js')
-        )) as { default: Promise<() => () => void> }
+        const mod = (await import(/* @vite-ignore */ chrome.runtime.getURL('/panel.js'))) as {
+          default: Promise<() => () => void>
+        }
         const mountPanel = await mod.default
         // Re-check state after the async gap — the user may have navigated away.
         if (!ctx.isValid || !isCheckoutPage(window.location.href, document)) return

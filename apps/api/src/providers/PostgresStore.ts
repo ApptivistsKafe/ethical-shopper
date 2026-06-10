@@ -79,14 +79,16 @@ export class PostgresStore implements Store {
   }
 
   async getSuggestions(): Promise<{
-    modelSuggestions: Array<{ normalizedLabel: string; count: number; examples: CategorySuggestion[] }>
+    modelSuggestions: Array<{
+      normalizedLabel: string
+      count: number
+      examples: CategorySuggestion[]
+    }>
     userSuggestions: CategorySuggestion[]
   }> {
     const [modelRows, userRows] = await Promise.all([
       // Model suggestions: group by normalizedLabel, include the first 5 as examples
-      this.sql<
-        Array<{ normalized_label: string; count: string; examples: CategorySuggestion[] }>
-      >`
+      this.sql<Array<{ normalized_label: string; count: string; examples: CategorySuggestion[] }>>`
         SELECT
           normalized_label,
           COUNT(*)::text AS count,

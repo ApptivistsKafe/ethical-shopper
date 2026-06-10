@@ -2,9 +2,18 @@ import TurndownService from 'turndown'
 
 // Elements that add no semantic content — strip before converting to markdown.
 const NOISE_SELECTORS = [
-  'script', 'style', 'link', 'meta', 'noscript',
-  'svg', 'header', 'footer', 'nav', 'aside',
-  'iframe', 'canvas',
+  'script',
+  'style',
+  'link',
+  'meta',
+  'noscript',
+  'svg',
+  'header',
+  'footer',
+  'nav',
+  'aside',
+  'iframe',
+  'canvas',
 ]
 
 /**

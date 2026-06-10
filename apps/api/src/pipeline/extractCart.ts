@@ -1,5 +1,10 @@
 import type { ModelProvider, ExtractCartFn, Cart } from '@ethical-shopper/core'
-import { parseCart, sanitizeUntrustedText, wrapUntrusted, extractJsonObject } from '@ethical-shopper/core'
+import {
+  parseCart,
+  sanitizeUntrustedText,
+  wrapUntrusted,
+  extractJsonObject,
+} from '@ethical-shopper/core'
 
 // Max sanitized markdown chars to send to the extraction model.
 // Gemini Flash Lite has a large context window; 16k chars covers most cart pages.

@@ -92,7 +92,8 @@ describe('sanitizeUntrustedText — cost reduction', () => {
 
 describe('sanitizeUntrustedText — preservation & edge cases', () => {
   it('preserves normal markdown structure', () => {
-    const input = '# Cart\n\n- Wireless Headphones — $79.99\n- USB Cable — $9.99\n\n**Total: $89.98**'
+    const input =
+      '# Cart\n\n- Wireless Headphones — $79.99\n- USB Cable — $9.99\n\n**Total: $89.98**'
     expect(sanitizeUntrustedText(input)).toBe(input)
   })
 

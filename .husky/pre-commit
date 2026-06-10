@@ -1,0 +1,16 @@
+# Identity tripwire — this repo must only ever be committed as Kafe.
+# (Husky's hooksPath bypasses .git/hooks, so the check lives here.)
+expected="kafe@apptivists.com"
+actual=$(git config user.email)
+if [ "$actual" != "$expected" ]; then
+  echo "" >&2
+  echo "  COMMIT BLOCKED - wrong identity for the ethical-shopper (Kafe) repo." >&2
+  echo "    got:      $actual" >&2
+  echo "    expected: $expected" >&2
+  echo "    fix: git config user.email kafe@apptivists.com && git config user.name Kafe" >&2
+  echo "" >&2
+  exit 1
+fi
+
+# Auto-format and lint staged files
+pnpm lint-staged

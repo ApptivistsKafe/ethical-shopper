@@ -1,6 +1,10 @@
 import React, { useState } from 'react'
 import type { CategoryView } from '@ethical-shopper/core'
-import { getEthicalStatusColor, getEthicalStatusEmoji, getTaxonomyEntry } from '@ethical-shopper/core'
+import {
+  getEthicalStatusColor,
+  getEthicalStatusEmoji,
+  getTaxonomyEntry,
+} from '@ethical-shopper/core'
 
 interface CategoryRowProps {
   category: CategoryView
@@ -43,7 +47,15 @@ export function CategoryRow({ category }: CategoryRowProps) {
         }}
       >
         <span style={{ fontSize: '14px', lineHeight: 1, flexShrink: 0 }}>{emoji}</span>
-        <span style={{ flex: 1, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span
+          style={{
+            flex: 1,
+            color: '#444',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {label}
         </span>
         <span

@@ -25,7 +25,9 @@ describe('FakeModelProvider', () => {
 
   it('throws queued errors', async () => {
     provider.enqueue(new Error('model timeout'))
-    await expect(provider.complete([{ role: 'user', content: 'test' }])).rejects.toThrow('model timeout')
+    await expect(provider.complete([{ role: 'user', content: 'test' }])).rejects.toThrow(
+      'model timeout',
+    )
   })
 
   it('throws when queue is exhausted', async () => {
@@ -36,7 +38,10 @@ describe('FakeModelProvider', () => {
 
   it('records all calls for inspection', async () => {
     provider.enqueue('ok')
-    await provider.complete([{ role: 'system', content: 'sys' }, { role: 'user', content: 'usr' }])
+    await provider.complete([
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'usr' },
+    ])
     expect(provider.calls[0]?.messages).toHaveLength(2)
   })
 
@@ -102,7 +107,11 @@ describe('InMemoryStore', () => {
   it('overwrites an existing report on setReport', async () => {
     const key = 'company:testco.com'
     await store.setReport(makeReport(key))
-    const updated = { ...makeReport(key), overallScore: EthicalStatus.Poor, ratingBand: EthicalStatus.Poor }
+    const updated = {
+      ...makeReport(key),
+      overallScore: EthicalStatus.Poor,
+      ratingBand: EthicalStatus.Poor,
+    }
     await store.setReport(updated)
     const result = await store.getReport(key)
     expect(result?.overallScore).toBe(EthicalStatus.Poor)
@@ -112,7 +121,9 @@ describe('InMemoryStore', () => {
     it('deduplicates model suggestions by normalizedLabel', async () => {
       await store.logSuggestion(buildSuggestion('Misinformation', 'funds disinfo', 'model', 'Meta'))
       await store.logSuggestion(buildSuggestion('misinformation', 'funds disinfo', 'model', 'Fox'))
-      await store.logSuggestion(buildSuggestion('MISINFORMATION', 'funds disinfo', 'model', 'Breitbart'))
+      await store.logSuggestion(
+        buildSuggestion('MISINFORMATION', 'funds disinfo', 'model', 'Breitbart'),
+      )
       const { modelSuggestions } = await store.getSuggestions()
       expect(modelSuggestions).toHaveLength(1)
       expect(modelSuggestions[0]?.count).toBe(3)
@@ -141,9 +152,7 @@ describe('InMemoryStore', () => {
 describe('FakeContextSource', () => {
   it('returns configured results and records queries', async () => {
     const source = new FakeContextSource()
-    source.setResults([
-      { title: 'Test result', url: 'https://example.com', snippet: 'A snippet.' },
-    ])
+    source.setResults([{ title: 'Test result', url: 'https://example.com', snippet: 'A snippet.' }])
     const results = await source.search('patagonia ethics')
     expect(results).toHaveLength(1)
     expect(source.queries).toContain('patagonia ethics')

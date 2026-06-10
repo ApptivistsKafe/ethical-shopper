@@ -97,8 +97,8 @@ function OptionsApp() {
     <div style={s.page}>
       <h1 style={{ fontSize: '20px', margin: '0 0 4px' }}>🛒 Ethical Shopper — Preferences</h1>
       <p style={{ color: '#666', margin: '0 0 24px', fontSize: '13px' }}>
-        Tell us which concerns matter to you. Opted-out categories are hidden and excluded
-        from a company&apos;s overall score; weighted categories pull the score more or less.
+        Tell us which concerns matter to you. Opted-out categories are hidden and excluded from a
+        company&apos;s overall score; weighted categories pull the score more or less.
       </p>
 
       {TAXONOMY.map((entry) => (

@@ -11,7 +11,13 @@ interface SiteRule {
 }
 
 const SITE_RULES: SiteRule[] = [
-  { domain: 'amazon.com', patterns: [/amazon\.com\/gp\/buy\/spc\/handlers\/display\.html/, /amazon\.com\/gp\/cart\/view\.html/] },
+  {
+    domain: 'amazon.com',
+    patterns: [
+      /amazon\.com\/gp\/buy\/spc\/handlers\/display\.html/,
+      /amazon\.com\/gp\/cart\/view\.html/,
+    ],
+  },
   { domain: 'ebay.com', patterns: [/ebay\.com\/myb\/PurchaseHistory/, /ebay\.com\/csc\/home/] },
   { domain: 'etsy.com', patterns: [/etsy\.com\/cart/, /etsy\.com\/your\/purchases/] },
   { domain: 'walmart.com', patterns: [/walmart\.com\/checkout/] },
@@ -22,12 +28,15 @@ const SITE_RULES: SiteRule[] = [
   { domain: 'nike.com', patterns: [/nike\.com\/checkout/, /nike\.com\/cart/] },
   { domain: 'apple.com', patterns: [/apple\.com\/shop\/checkout/, /apple\.com\/shop\/bag/] },
   { domain: 'gap.com', patterns: [/gap\.com\/checkout/, /gap\.com\/shopping-bag/] },
-  { domain: 'nordstrom.com', patterns: [/nordstrom\.com\/checkout/, /nordstrom\.com\/shopping-bag/] },
+  {
+    domain: 'nordstrom.com',
+    patterns: [/nordstrom\.com\/checkout/, /nordstrom\.com\/shopping-bag/],
+  },
   { domain: 'costco.com', patterns: [/costco\.com\/CheckoutCartDisplayView/, /costco\.com\/cart/] },
 ]
 
 // URL path/query keywords that reliably indicate a cart or checkout page.
-const URL_KEYWORDS = /\b(checkout|cart|shopping[\-_]bag|order[\-_]review)\b/i
+const URL_KEYWORDS = /\b(checkout|cart|shopping[-_]bag|order[-_]review)\b/i
 
 /**
  * Returns true if the given URL + document appear to be a checkout or cart page.

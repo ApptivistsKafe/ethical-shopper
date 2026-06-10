@@ -1,7 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { SuggestRequestSchema, buildSuggestion, InMemoryStore, type Store } from '@ethical-shopper/core'
+import {
+  SuggestRequestSchema,
+  buildSuggestion,
+  InMemoryStore,
+  type Store,
+} from '@ethical-shopper/core'
 import { PostgresStore } from '../src/providers/PostgresStore.js'
-import { handleCorsAndMethod, rejectUnauthorized, createRateLimiter, clientIp } from '../src/lib/http.js'
+import {
+  handleCorsAndMethod,
+  rejectUnauthorized,
+  createRateLimiter,
+  clientIp,
+} from '../src/lib/http.js'
 
 let storeSingleton: Store | null = null
 function getStore(): Store {

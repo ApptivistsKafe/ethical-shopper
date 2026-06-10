@@ -12,14 +12,17 @@ import { PostgresStore } from '../src/providers/PostgresStore.js'
 import { extractCart } from '../src/pipeline/extractCart.js'
 import { makeScoreCompanyFn } from '../src/pipeline/scoreCompany.js'
 import { companiesToScore } from '../src/pipeline/companiesToScore.js'
-import { handleCorsAndMethod, rejectUnauthorized, createRateLimiter, clientIp } from '../src/lib/http.js'
+import {
+  handleCorsAndMethod,
+  rejectUnauthorized,
+  createRateLimiter,
+  clientIp,
+} from '../src/lib/http.js'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const EXTRACTION_MODEL =
-  process.env['EXTRACTION_MODEL'] ?? 'google/gemini-2.5-flash-lite'
-const SCORING_MODEL =
-  process.env['SCORING_MODEL'] ?? 'anthropic/claude-sonnet-4-5'
+const EXTRACTION_MODEL = process.env['EXTRACTION_MODEL'] ?? 'google/gemini-2.5-flash-lite'
+const SCORING_MODEL = process.env['SCORING_MODEL'] ?? 'anthropic/claude-sonnet-4-5'
 
 /**
  * Vercel function config:

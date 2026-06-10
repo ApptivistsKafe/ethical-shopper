@@ -2,17 +2,42 @@
   "name": "ethical-shopper",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@11.5.2",
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
     "test:core": "pnpm --filter @ethical-shopper/core test",
     "test:api": "pnpm --filter @ethical-shopper/api test",
-    "lint": "turbo run lint",
-    "dev": "turbo run dev"
+    "test:extension": "pnpm --filter @ethical-shopper/extension test",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "eval": "pnpm --filter @ethical-shopper/api eval",
+    "dev": "turbo run dev",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.0",
+    "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.0",
+    "prettier": "^3.5.0",
     "turbo": "^2.5.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.24.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,html,css,mjs}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=22",

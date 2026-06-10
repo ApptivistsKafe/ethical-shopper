@@ -26,7 +26,8 @@ describe('extractJsonObject', () => {
   })
 
   it('parses fenced JSON preceded by prose', () => {
-    const raw = 'Sure! Here you go:\n```json\n{"items": [1, 2]}\n```\nLet me know if you need anything else.'
+    const raw =
+      'Sure! Here you go:\n```json\n{"items": [1, 2]}\n```\nLet me know if you need anything else.'
     expect(extractJsonObject(raw)).toEqual({ items: [1, 2] })
   })
 

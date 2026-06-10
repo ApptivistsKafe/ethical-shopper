@@ -36,8 +36,9 @@ const DEFAULTS: Required<SanitizeOptions> = {
 
 // Invisible / formatting characters commonly used to hide prompt-injection payloads:
 // zero-width spaces & joiners, bidi overrides, word joiners, soft hyphen, BOM,
-// and the deprecated formatting block U+206A–U+206F.
-const INVISIBLE_CHARS = /[​-‏‪-‮⁠-⁯﻿­]/g
+// and the deprecated formatting block U+206A–U+206F. Written as escapes so the
+// pattern itself contains no invisible characters.
+const INVISIBLE_CHARS = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\u00AD]/g
 
 // C0/C1 control characters except \n (\x0A) and \t (\x09). \r is handled separately.
 // eslint-disable-next-line no-control-regex

@@ -48,11 +48,13 @@ export class InMemoryStore implements Store {
       modelGrouped.set(s.normalizedLabel, group)
     }
 
-    const modelSuggestions = Array.from(modelGrouped.entries()).map(([normalizedLabel, examples]) => ({
-      normalizedLabel,
-      count: examples.length,
-      examples,
-    }))
+    const modelSuggestions = Array.from(modelGrouped.entries()).map(
+      ([normalizedLabel, examples]) => ({
+        normalizedLabel,
+        count: examples.length,
+        examples,
+      }),
+    )
 
     // User suggestions: all retained, NOT deduped
     return { modelSuggestions, userSuggestions }

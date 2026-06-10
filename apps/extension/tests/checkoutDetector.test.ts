@@ -12,7 +12,9 @@ describe('isCheckoutPage — domain-specific patterns', () => {
   })
 
   it('detects Amazon single-page checkout', () => {
-    expect(isCheckoutPage('https://www.amazon.com/gp/buy/spc/handlers/display.html', doc)).toBe(true)
+    expect(isCheckoutPage('https://www.amazon.com/gp/buy/spc/handlers/display.html', doc)).toBe(
+      true,
+    )
   })
 
   it('detects eBay purchase history (post-checkout)', () => {

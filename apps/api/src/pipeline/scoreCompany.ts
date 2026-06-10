@@ -1,4 +1,10 @@
-import type { ModelProvider, Store, ScoreCompanyFn, ContextSource, EthicsReport } from '@ethical-shopper/core'
+import type {
+  ModelProvider,
+  Store,
+  ScoreCompanyFn,
+  ContextSource,
+  EthicsReport,
+} from '@ethical-shopper/core'
 import {
   parseScoringResponse,
   computeOverallScore,

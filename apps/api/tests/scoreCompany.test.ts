@@ -154,7 +154,11 @@ describe('makeScoreCompanyFn', () => {
   it('enriches the prompt with context source results when provided', async () => {
     const contextSource = new FakeContextSource()
     contextSource.setResults([
-      { title: 'Walmart labor violations 2024', url: 'https://example.com', snippet: 'Wage theft documented.' },
+      {
+        title: 'Walmart labor violations 2024',
+        url: 'https://example.com',
+        snippet: 'Wage theft documented.',
+      },
     ])
 
     provider.enqueue(makeScoringResponse({ labor: EthicalStatus.Poor }))

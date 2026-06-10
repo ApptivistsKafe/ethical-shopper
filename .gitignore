@@ -44,3 +44,8 @@ backend/test-reddit-api.sh
 backend/src/test.json
 backend/src/formatted_test.json
 **/processTestData.ts
+
+# Monorepo build/tool artifacts
+.turbo/
+.output/
+.wxt/

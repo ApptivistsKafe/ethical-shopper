@@ -6,7 +6,6 @@ import {
   AnalyzeRequestSchema,
   SuggestRequestSchema,
   parseScoringResponse,
-  parseCart,
 } from '../src/schemas.js'
 import { EthicalStatus } from '../src/types.js'
 
@@ -14,22 +13,44 @@ const validScoringResponse = {
   categories: [
     { id: 'labor', score: 'Poor', blurb: 'Documented union-busting.', confidence: 0.9 },
     { id: 'climate', score: null, blurb: 'No notable environmental record.', confidence: 0.5 },
-    { id: 'political_giving', score: 'Concerning', blurb: 'Donates to anti-democracy candidates.', confidence: 0.85 },
-    { id: 'animal_welfare', score: null, blurb: 'No notable animal welfare record.', confidence: 0.5 },
-    { id: 'data_privacy_surveillance', score: null, blurb: 'No notable privacy record.', confidence: 0.5 },
-    { id: 'governance_anticompetitive', score: null, blurb: 'No notable governance record.', confidence: 0.5 },
+    {
+      id: 'political_giving',
+      score: 'Concerning',
+      blurb: 'Donates to anti-democracy candidates.',
+      confidence: 0.85,
+    },
+    {
+      id: 'animal_welfare',
+      score: null,
+      blurb: 'No notable animal welfare record.',
+      confidence: 0.5,
+    },
+    {
+      id: 'data_privacy_surveillance',
+      score: null,
+      blurb: 'No notable privacy record.',
+      confidence: 0.5,
+    },
+    {
+      id: 'governance_anticompetitive',
+      score: null,
+      blurb: 'No notable governance record.',
+      confidence: 0.5,
+    },
     { id: 'supply_chain', score: null, blurb: 'No notable supply chain record.', confidence: 0.5 },
   ],
 }
 
 const validCart = {
-  items: [{
-    name: 'Wireless Headphones',
-    brand: 'Sony',
-    sellingCompany: 'Amazon',
-    price: 79.99,
-    url: 'https://amazon.com/dp/B08N5WRWNW',
-  }],
+  items: [
+    {
+      name: 'Wireless Headphones',
+      brand: 'Sony',
+      sellingCompany: 'Amazon',
+      price: 79.99,
+      url: 'https://amazon.com/dp/B08N5WRWNW',
+    },
+  ],
   sourceUrl: 'https://www.amazon.com/cart',
 }
 
@@ -111,7 +132,9 @@ describe('CartSchema', () => {
 
   it('allows null brand and null price', () => {
     const withNulls = {
-      items: [{ name: 'Mystery Item', brand: null, sellingCompany: 'Amazon', price: null, url: null }],
+      items: [
+        { name: 'Mystery Item', brand: null, sellingCompany: 'Amazon', price: null, url: null },
+      ],
       sourceUrl: 'https://amazon.com/cart',
     }
     expect(() => CartSchema.parse(withNulls)).not.toThrow()
@@ -181,7 +204,11 @@ describe('EthicsReportSchema', () => {
       categories: validScoringResponse.categories,
       overallScore: EthicalStatus.Concerning,
       ratingBand: EthicalStatus.Concerning,
-      meta: { modelUsed: 'claude-sonnet', scoredAt: new Date().toISOString(), cacheKey: 'company:amazon.com' },
+      meta: {
+        modelUsed: 'claude-sonnet',
+        scoredAt: new Date().toISOString(),
+        cacheKey: 'company:amazon.com',
+      },
     }
     expect(() => EthicsReportSchema.parse(report)).not.toThrow()
   })

@@ -149,9 +149,7 @@ export function EthicalPanel({ markdown, pageUrl, userWeights, onDismiss }: Ethi
       {/* ─── Body ───────────────────────────────────────────────────────────── */}
       <div style={{ paddingBottom: '8px' }}>
         {/* Extracting cart */}
-        {!cart && errors.length === 0 && (
-          <p style={loadingMsg}>Scanning your cart…</p>
-        )}
+        {!cart && errors.length === 0 && <p style={loadingMsg}>Scanning your cart…</p>}
 
         {/* Company cards stream in as they resolve */}
         {views.map((view) => (

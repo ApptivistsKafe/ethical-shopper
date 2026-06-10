@@ -179,7 +179,12 @@ describe('streamAnalysis', () => {
     stubFetch(ndjsonStream([DONE_EVENT]))
 
     const fetchSpy = vi.mocked(globalThis.fetch)
-    for await (const _ of streamAnalysis({ markdown: 'my-markdown', url: 'https://shop.example.com/cart' })) { /* consume */ }
+    for await (const _ of streamAnalysis({
+      markdown: 'my-markdown',
+      url: 'https://shop.example.com/cart',
+    })) {
+      /* consume */
+    }
 
     expect(fetchSpy).toHaveBeenCalledOnce()
     const [, init] = fetchSpy.mock.calls[0]!
@@ -192,7 +197,9 @@ describe('streamAnalysis', () => {
     stubFetch(ndjsonStream([DONE_EVENT]))
 
     const fetchSpy = vi.mocked(globalThis.fetch)
-    for await (const _ of streamAnalysis({ markdown: 'x', url: 'u' })) { /* consume */ }
+    for await (const _ of streamAnalysis({ markdown: 'x', url: 'u' })) {
+      /* consume */
+    }
 
     const [url] = fetchSpy.mock.calls[0]!
     expect(String(url)).toContain('/api/analyze')

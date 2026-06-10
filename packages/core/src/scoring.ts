@@ -83,7 +83,8 @@ export function computeOverallScore(
     // 0 means opted out — exclude entirely
     if (userWeight === 0) continue
 
-    const effectiveWeight = (userWeight ?? entry.defaultWeight) * confidenceMultiplier(categoryMap.get(entry.id))
+    const effectiveWeight =
+      (userWeight ?? entry.defaultWeight) * confidenceMultiplier(categoryMap.get(entry.id))
 
     const categoryScore = categoryMap.get(entry.id)
     const numericScore =
@@ -131,7 +132,8 @@ export function filterVisibleCategories(
  */
 export function composeExplanation(visibleCategories: CategoryScore[]): string {
   const blurbs = visibleCategories.map((c) => c.blurb).filter(Boolean)
-  if (blurbs.length === 0) return 'No notable ethical concerns or highlights found for this company.'
+  if (blurbs.length === 0)
+    return 'No notable ethical concerns or highlights found for this company.'
   return blurbs.join(' ')
 }
 

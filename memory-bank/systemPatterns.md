@@ -117,16 +117,19 @@
 ### Data Flow
 
 1. Checkout Detection
+
    ```
    URL/DOM Input -> Pattern Matching -> Confidence Scoring -> Cache -> Result
    ```
 
 2. Development Testing
+
    ```
    User Input -> Mock Document -> Detection Service -> UI Update
    ```
 
 3. Extension Flow (Checkout Detection)
+
    ```mermaid
    graph LR
        A[Page Load] --> B(Content Script);
@@ -136,6 +139,7 @@
    ```
 
 4. Extension Flow (AI Analysis - Two Step)
+
    ```mermaid
     graph LR
         subgraph Frontend (Extension)
@@ -199,7 +203,7 @@
         B9 --> B10;
         B10 --> S7;
         S7 --> P6;
-    ```
+   ```
 
 ### Best Practices
 

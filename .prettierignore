@@ -1,0 +1,19 @@
+# Build outputs
+dist/
+.output/
+.wxt/
+.turbo/
+node_modules/
+
+# Lockfiles
+pnpm-lock.yaml
+
+# Legacy code (pre-monorepo; kept until the new apps reach parity, then deleted)
+frontend/
+backend/
+
+# Generated binary assets
+*.png
+
+# Docs are hand-formatted
+docs/

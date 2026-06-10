@@ -98,7 +98,9 @@ async function main(): Promise<void> {
       }
     } catch (err) {
       failures++
-      console.log(`✗ ${fixture.name.padEnd(14)} → ERROR: ${err instanceof Error ? err.message : String(err)}`)
+      console.log(
+        `✗ ${fixture.name.padEnd(14)} → ERROR: ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 

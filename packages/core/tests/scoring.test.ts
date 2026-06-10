@@ -11,7 +11,12 @@ import {
   getEthicalStatusColor,
   getEthicalStatusEmoji,
 } from '../src/scoring.js'
-import { EthicalStatus, NEUTRAL_ROLLUP_VALUE, type CategoryScore, type EthicsReport } from '../src/types.js'
+import {
+  EthicalStatus,
+  NEUTRAL_ROLLUP_VALUE,
+  type CategoryScore,
+  type EthicsReport,
+} from '../src/types.js'
 import { ALL_CATEGORY_IDS } from '../src/taxonomy.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -25,7 +30,9 @@ function makeCategory(
 }
 
 /** All categories neutral except the specified ones. */
-function categoriesWithScores(overrides: Partial<Record<CategoryScore['id'], EthicalStatus>>): CategoryScore[] {
+function categoriesWithScores(
+  overrides: Partial<Record<CategoryScore['id'], EthicalStatus>>,
+): CategoryScore[] {
   return ALL_CATEGORY_IDS.map((id) => makeCategory(id, overrides[id] ?? null))
 }
 
@@ -68,12 +75,16 @@ describe('computeOverallScore', () => {
   })
 
   it('returns Excellent when all categories are Excellent', () => {
-    const overrides = Object.fromEntries(ALL_CATEGORY_IDS.map((id) => [id, EthicalStatus.Excellent])) as any
+    const overrides = Object.fromEntries(
+      ALL_CATEGORY_IDS.map((id) => [id, EthicalStatus.Excellent]),
+    ) as any
     expect(computeOverallScore(categoriesWithScores(overrides))).toBe(EthicalStatus.Excellent)
   })
 
   it('returns Poor when all categories are Poor', () => {
-    const overrides = Object.fromEntries(ALL_CATEGORY_IDS.map((id) => [id, EthicalStatus.Poor])) as any
+    const overrides = Object.fromEntries(
+      ALL_CATEGORY_IDS.map((id) => [id, EthicalStatus.Poor]),
+    ) as any
     expect(computeOverallScore(categoriesWithScores(overrides))).toBe(EthicalStatus.Poor)
   })
 
@@ -253,7 +264,9 @@ describe('buildCompanyView', () => {
     const view = buildCompanyView(report)
 
     expect(view.companyName).toBe('Acme Corp')
-    expect([EthicalStatus.Mixed, EthicalStatus.Concerning, EthicalStatus.Good]).toContain(view.overallScore)
+    expect([EthicalStatus.Mixed, EthicalStatus.Concerning, EthicalStatus.Good]).toContain(
+      view.overallScore,
+    )
     expect(view.visibleCategories).toHaveLength(2)
     expect(view.explanation).toBeTruthy()
     expect(view.color).toMatch(/^hsl/)
