@@ -80,6 +80,24 @@ function PopupApp() {
         <span>Pause extension</span>
         <input type="checkbox" checked={isPaused} onChange={togglePause} />
       </div>
+
+      <hr style={s.divider} />
+
+      <button
+        onClick={() => chrome.runtime.openOptionsPage()}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#2e7d32',
+          cursor: 'pointer',
+          fontSize: '12px',
+          padding: 0,
+          textDecoration: 'underline',
+          fontFamily: 'inherit',
+        }}
+      >
+        Preferences — choose which concerns matter to you
+      </button>
     </div>
   )
 }

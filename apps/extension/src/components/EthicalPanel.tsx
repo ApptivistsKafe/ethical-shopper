@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
-import type { Cart, CompanyView, AnalyzeStreamEvent } from '@ethical-shopper/core'
+import type { Cart, CompanyView, AnalyzeStreamEvent, UserWeights } from '@ethical-shopper/core'
 import { streamAnalysis } from '../services/analyzeStream'
 import { CompanyCard } from './CompanyCard'
+import { SuggestionFooter } from './SuggestionFooter'
 
 interface EthicalPanelProps {
   markdown: string
   pageUrl: string
+  userWeights?: UserWeights
   onDismiss: () => void
 }
 
@@ -82,7 +84,7 @@ const errorMsg: React.CSSProperties = {
  * State machine:
  *   idle → streaming cart → cart received → streaming company scores → done
  */
-export function EthicalPanel({ markdown, pageUrl, onDismiss }: EthicalPanelProps) {
+export function EthicalPanel({ markdown, pageUrl, userWeights, onDismiss }: EthicalPanelProps) {
   const [cart, setCart] = useState<Cart | null>(null)
   const [views, setViews] = useState<CompanyView[]>([])
   const [errors, setErrors] = useState<string[]>([])
@@ -95,7 +97,7 @@ export function EthicalPanel({ markdown, pageUrl, onDismiss }: EthicalPanelProps
     cancelledRef.current = false
 
     const run = async () => {
-      for await (const event of streamAnalysis({ markdown, url: pageUrl })) {
+      for await (const event of streamAnalysis({ markdown, url: pageUrl, userWeights })) {
         if (cancelledRef.current) break
         dispatch(event)
       }
@@ -130,12 +132,9 @@ export function EthicalPanel({ markdown, pageUrl, onDismiss }: EthicalPanelProps
     }
   }
 
-  // How many companies are we expecting?
-  // Use unique sellingCompany names from cart items as a lower bound.
-  const expectedCount = cart
-    ? new Set(cart.items.map((i) => i.sellingCompany.toLowerCase())).size
-    : 0
-  const isScoring = cart !== null && !done && views.length < expectedCount
+  // The server decides which companies to score (sellers + brands, capped),
+  // so the client can't predict an exact count — show the indicator until done.
+  const isScoring = cart !== null && cart.items.length > 0 && !done
 
   return (
     <div style={{ ...panel, boxSizing: 'border-box' }}>
@@ -173,6 +172,9 @@ export function EthicalPanel({ markdown, pageUrl, onDismiss }: EthicalPanelProps
         {done && views.length === 0 && errors.length === 0 && (
           <p style={loadingMsg}>No companies identified in this cart.</p>
         )}
+
+        {/* User suggestion footer — appears once results are in */}
+        {done && <SuggestionFooter />}
       </div>
     </div>
   )

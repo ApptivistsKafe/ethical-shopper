@@ -2,6 +2,12 @@ import type { AnalyzeStreamEvent, AnalyzeRequest } from '@ethical-shopper/core'
 
 // Injected at build time by wxt.config.ts (and by vitest.config.ts in tests).
 declare const __API_BASE_URL__: string
+// Shared abuse-mitigation token; empty string disables the header.
+declare const __API_TOKEN__: string
+
+function authHeaders(): Record<string, string> {
+  return __API_TOKEN__ ? { 'X-ES-Token': __API_TOKEN__ } : {}
+}
 
 /**
  * Calls POST /api/analyze and yields each NDJSON event as it arrives.
@@ -24,7 +30,7 @@ export async function* streamAnalysis(
   try {
     response = await fetch(`${__API_BASE_URL__}/api/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(request),
     })
   } catch (err) {
@@ -82,5 +88,22 @@ export async function* streamAnalysis(
     }
   } finally {
     reader.releaseLock()
+  }
+}
+
+/**
+ * Submits a user-suggested ethical concern category to POST /api/suggest.
+ * Returns true on success; false on any failure (best-effort, never throws).
+ */
+export async function submitSuggestion(label: string, rationale?: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${__API_BASE_URL__}/api/suggest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ label, rationale }),
+    })
+    return response.ok
+  } catch {
+    return false
   }
 }
