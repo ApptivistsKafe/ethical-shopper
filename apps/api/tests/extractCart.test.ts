@@ -96,11 +96,12 @@ describe('extractCart', () => {
     await expect(extractCart('content', provider)).rejects.toThrow(SyntaxError)
   })
 
-  it('throws a ZodError when cart has no items', async () => {
+  it('returns an empty cart gracefully when the model finds no items', async () => {
     const provider = new FakeModelProvider()
     provider.enqueue(JSON.stringify({ items: [], sourceUrl: 'https://example.com' }))
 
-    await expect(extractCart('content', provider)).rejects.toThrow()
+    const cart = await extractCart('content', provider)
+    expect(cart.items).toHaveLength(0)
   })
 
   it('throws when model call fails', async () => {

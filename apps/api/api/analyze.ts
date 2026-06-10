@@ -1,10 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
-  type AnalyzeRequest,
   type AnalyzeStreamEvent,
-  type Cart,
-  type CartItem,
   type Store,
+  AnalyzeRequestSchema,
   buildCompanyView,
   InMemoryStore,
 } from '@ethical-shopper/core'
@@ -13,6 +11,8 @@ import { BraveSearchSource } from '../src/providers/BraveSearchSource.js'
 import { PostgresStore } from '../src/providers/PostgresStore.js'
 import { extractCart } from '../src/pipeline/extractCart.js'
 import { makeScoreCompanyFn } from '../src/pipeline/scoreCompany.js'
+import { companiesToScore } from '../src/pipeline/companiesToScore.js'
+import { handleCorsAndMethod, rejectUnauthorized, createRateLimiter, clientIp } from '../src/lib/http.js'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -21,8 +21,53 @@ const EXTRACTION_MODEL =
 const SCORING_MODEL =
   process.env['SCORING_MODEL'] ?? 'anthropic/claude-sonnet-4-5'
 
-/** Vercel: allow up to 60 seconds for streaming responses */
-export const config = { maxDuration: 60 }
+/**
+ * Vercel function config:
+ *  - maxDuration: scoring several companies takes real time
+ *  - supportsResponseStreaming: REQUIRED for res.write chunks to reach the
+ *    client incrementally — without it the Node runtime buffers the whole
+ *    response and "streaming" arrives as one blob at the end.
+ */
+export const config = { maxDuration: 60, supportsResponseStreaming: true }
+
+// ─── Module-scoped singletons (reused across warm invocations) ────────────────
+
+let storeSingleton: Store | null = null
+function getStore(): Store {
+  if (!storeSingleton) {
+    if (process.env['POSTGRES_URL']) {
+      storeSingleton = new PostgresStore()
+    } else {
+      console.warn('[analyze] POSTGRES_URL not set — using in-memory store (no persistence).')
+      storeSingleton = new InMemoryStore()
+    }
+  }
+  return storeSingleton
+}
+
+let contextSourceSingleton: BraveSearchSource | undefined | null = null
+function getContextSource(): BraveSearchSource | undefined {
+  if (contextSourceSingleton === null) {
+    if (process.env['BRAVE_API_KEY']) {
+      contextSourceSingleton = new BraveSearchSource()
+    } else {
+      console.warn('[analyze] BRAVE_API_KEY not set — scoring without web context enrichment.')
+      contextSourceSingleton = undefined
+    }
+  }
+  return contextSourceSingleton
+}
+
+// Single-flight map lives inside the factory — keep ONE factory per instance
+// so concurrent requests for the same company share a scoring run.
+const scoreCompanyPromise: { fn: ReturnType<typeof makeScoreCompanyFn> | null } = { fn: null }
+function getScoreCompany(): ReturnType<typeof makeScoreCompanyFn> {
+  scoreCompanyPromise.fn ??= makeScoreCompanyFn(getContextSource())
+  return scoreCompanyPromise.fn
+}
+
+// Per-IP rate limit (best-effort, per warm instance — see createRateLimiter docs).
+const rateLimiter = createRateLimiter({ max: 10, windowMs: 60_000 })
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -30,116 +75,65 @@ function writeEvent(res: VercelResponse, event: AnalyzeStreamEvent): void {
   res.write(JSON.stringify(event) + '\n')
 }
 
-/**
- * Extract the effective domain for a cart item.
- * Tries the item URL, then falls back to the page URL.
- */
-function extractDomain(item: CartItem, pageUrl: string): string | null {
-  const candidate = item.url ?? pageUrl
-  try {
-    return new URL(candidate).hostname.replace(/^www\./, '')
-  } catch {
-    return null
-  }
-}
-
-/**
- * Deduplicate cart items by sellingCompany (case-insensitive).
- * Returns one representative item per unique company.
- */
-function uniqueCompanies(cart: Cart, pageUrl: string): Array<{ name: string; domain: string | null }> {
-  const seen = new Map<string, { name: string; domain: string | null }>()
-  for (const item of cart.items) {
-    const key = item.sellingCompany.toLowerCase()
-    if (!seen.has(key)) {
-      seen.set(key, {
-        name: item.sellingCompany,
-        domain: extractDomain(item, pageUrl),
-      })
-    }
-  }
-  return [...seen.values()]
-}
-
-/** Build the store — Postgres in production, InMemory in dev (POSTGRES_URL unset). */
-function buildStore(): Store {
-  if (process.env['POSTGRES_URL']) {
-    return new PostgresStore()
-  }
-  console.warn('[analyze] POSTGRES_URL not set — using in-memory store (no persistence).')
-  return new InMemoryStore()
-}
-
-/** Build BraveSearchSource if key is available; otherwise disable context enrichment. */
-function buildContextSource(): BraveSearchSource | undefined {
-  if (process.env['BRAVE_API_KEY']) {
-    return new BraveSearchSource()
-  }
-  console.warn('[analyze] BRAVE_API_KEY not set — scoring without web context enrichment.')
-  return undefined
-}
-
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-  // ── CORS preflight ──────────────────────────────────────────────────────────
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  if (handleCorsAndMethod(req, res, 'POST')) return
+  if (rejectUnauthorized(req, res)) return
 
-  if (req.method === 'OPTIONS') {
-    res.status(204).end()
+  if (rateLimiter.isLimited(clientIp(req))) {
+    res.status(429).json({ error: 'Too many requests' })
     return
   }
 
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' })
+  // ── Validate request body BEFORE committing to a streaming response ────────
+  const parsed = AnalyzeRequestSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten().fieldErrors })
     return
   }
-
-  // ── Streaming headers ───────────────────────────────────────────────────────
-  res.setHeader('Content-Type', 'application/x-ndjson')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('X-Accel-Buffering', 'no') // disable nginx buffering if behind a proxy
-  res.status(200)
-
-  const body = req.body as Partial<AnalyzeRequest>
-
-  if (!body?.markdown || !body?.url) {
-    writeEvent(res, { type: 'error', message: 'Request body must include "markdown" and "url".' })
-    res.end()
-    return
-  }
-
-  const { markdown, url: pageUrl, userWeights = {} } = body as AnalyzeRequest
+  const { markdown, url: pageUrl, userWeights = {} } = parsed.data
 
   // ── Build providers ─────────────────────────────────────────────────────────
   let extractionProvider: OpenRouterProvider
   let scoringProvider: OpenRouterProvider
 
   try {
-    extractionProvider = new OpenRouterProvider({ model: EXTRACTION_MODEL })
-    scoringProvider = new OpenRouterProvider({ model: SCORING_MODEL })
+    // Extraction is fast — short timeout. Scoring generates ~2k tokens through
+    // a large model — it legitimately needs longer.
+    extractionProvider = new OpenRouterProvider({ model: EXTRACTION_MODEL, timeoutMs: 12_000 })
+    scoringProvider = new OpenRouterProvider({ model: SCORING_MODEL, timeoutMs: 30_000 })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    writeEvent(res, { type: 'error', message: `Provider init failed: ${message}` })
-    res.end()
+    res.status(500).json({ error: `Provider init failed: ${message}` })
     return
   }
 
-  const store = buildStore()
-  const contextSource = buildContextSource()
-  const scoreCompany = makeScoreCompanyFn(contextSource)
+  // ── Streaming response ──────────────────────────────────────────────────────
+  res.setHeader('Content-Type', 'application/x-ndjson')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('X-Accel-Buffering', 'no')
+  res.status(200)
+
+  const store = getStore()
+  const scoreCompany = getScoreCompany()
 
   try {
     // ── Step 1: Extract cart (fast, cheap model) ──────────────────────────────
     const cart = await extractCart(markdown, extractionProvider)
     writeEvent(res, { type: 'cart', cart })
 
-    // ── Step 2: Score all unique companies in parallel ─────────────────────────
+    // Empty cart is a graceful outcome — nothing to score.
+    if (cart.items.length === 0) {
+      writeEvent(res, { type: 'done' })
+      res.end()
+      return
+    }
+
+    // ── Step 2: Score unique sellers AND brands in parallel ───────────────────
     // Each company streams its companyView event as soon as it resolves.
     // Promise.allSettled ensures one failure doesn't cancel the others.
-    const companies = uniqueCompanies(cart, pageUrl)
+    const companies = companiesToScore(cart, pageUrl)
 
     await Promise.allSettled(
       companies.map(async ({ name, domain }) => {
