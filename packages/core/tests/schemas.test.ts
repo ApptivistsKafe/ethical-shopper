@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { EthicsReportSchema, ModelScoringResponseSchema, CartSchema, parseScoringResponse, parseCart } from '../src/schemas.js'
+import {
+  EthicsReportSchema,
+  ModelScoringResponseSchema,
+  CartSchema,
+  AnalyzeRequestSchema,
+  SuggestRequestSchema,
+  parseScoringResponse,
+  parseCart,
+} from '../src/schemas.js'
 import { EthicalStatus } from '../src/types.js'
 
 const validScoringResponse = {
@@ -89,8 +97,8 @@ describe('CartSchema', () => {
     expect(() => CartSchema.parse(validCart)).not.toThrow()
   })
 
-  it('rejects an empty items array', () => {
-    expect(() => CartSchema.parse({ ...validCart, items: [] })).toThrow()
+  it('accepts an empty items array (graceful "nothing found" outcome)', () => {
+    expect(() => CartSchema.parse({ ...validCart, items: [] })).not.toThrow()
   })
 
   it('rejects a cart item with missing sellingCompany', () => {
@@ -107,6 +115,62 @@ describe('CartSchema', () => {
       sourceUrl: 'https://amazon.com/cart',
     }
     expect(() => CartSchema.parse(withNulls)).not.toThrow()
+  })
+})
+
+describe('AnalyzeRequestSchema', () => {
+  const validRequest = { markdown: '# Cart\n- item', url: 'https://amazon.com/cart' }
+
+  it('accepts a valid request without userWeights', () => {
+    expect(() => AnalyzeRequestSchema.parse(validRequest)).not.toThrow()
+  })
+
+  it('accepts valid userWeights including opt-out (0)', () => {
+    const req = { ...validRequest, userWeights: { political_giving: 0, labor: 2.5 } }
+    expect(() => AnalyzeRequestSchema.parse(req)).not.toThrow()
+  })
+
+  it('REJECTS negative weights — polarity inversion is disallowed', () => {
+    const req = { ...validRequest, userWeights: { political_giving: -5 } }
+    expect(() => AnalyzeRequestSchema.parse(req)).toThrow()
+  })
+
+  it('rejects weights above the maximum', () => {
+    const req = { ...validRequest, userWeights: { labor: 100 } }
+    expect(() => AnalyzeRequestSchema.parse(req)).toThrow()
+  })
+
+  it('rejects unknown category IDs in userWeights', () => {
+    const req = { ...validRequest, userWeights: { made_up: 1 } }
+    expect(() => AnalyzeRequestSchema.parse(req)).toThrow()
+  })
+
+  it('rejects empty markdown', () => {
+    expect(() => AnalyzeRequestSchema.parse({ ...validRequest, markdown: '' })).toThrow()
+  })
+
+  it('rejects oversized markdown', () => {
+    expect(() =>
+      AnalyzeRequestSchema.parse({ ...validRequest, markdown: 'x'.repeat(300_000) }),
+    ).toThrow()
+  })
+})
+
+describe('SuggestRequestSchema', () => {
+  it('accepts a valid suggestion', () => {
+    expect(() =>
+      SuggestRequestSchema.parse({ label: 'Misinformation', rationale: 'funds disinfo' }),
+    ).not.toThrow()
+  })
+
+  it('rejects a too-short label', () => {
+    expect(() => SuggestRequestSchema.parse({ label: 'x' })).toThrow()
+  })
+
+  it('rejects an oversized rationale', () => {
+    expect(() =>
+      SuggestRequestSchema.parse({ label: 'Valid label', rationale: 'y'.repeat(600) }),
+    ).toThrow()
   })
 })
 

@@ -28,6 +28,25 @@ export function ethicalStatusToNumeric(status: EthicalStatus): number {
   return ETHICAL_STATUS_NUMERIC[status]
 }
 
+// ─── User Weight Clamping ─────────────────────────────────────────────────────
+
+/** Upper bound for user-supplied category weights. */
+export const MAX_USER_WEIGHT = 10
+
+/**
+ * Clamps an untrusted user weight to the valid range [0, MAX_USER_WEIGHT].
+ *
+ * REQUIREMENT: users may opt OUT of a category (weight 0) but must never be
+ * able to INVERT its polarity. A negative weight would flip a category's
+ * contribution in the rollup (making Poor scores raise the overall rating),
+ * so anything non-finite or below zero is treated as opt-out.
+ */
+export function clampUserWeight(raw: number | undefined): number | undefined {
+  if (raw === undefined) return undefined
+  if (!Number.isFinite(raw) || raw <= 0) return 0
+  return Math.min(raw, MAX_USER_WEIGHT)
+}
+
 // ─── Rollup ───────────────────────────────────────────────────────────────────
 
 /**
@@ -60,7 +79,7 @@ export function computeOverallScore(
   let totalWeight = 0
 
   for (const entry of TAXONOMY) {
-    const userWeight = userWeights[entry.id]
+    const userWeight = clampUserWeight(userWeights[entry.id])
     // 0 means opted out — exclude entirely
     if (userWeight === 0) continue
 
@@ -102,7 +121,7 @@ export function filterVisibleCategories(
   userWeights: UserWeights = {},
 ): CategoryScore[] {
   return categories.filter(
-    (cat) => cat.score !== null && userWeights[cat.id] !== 0,
+    (cat) => cat.score !== null && clampUserWeight(userWeights[cat.id]) !== 0,
   )
 }
 

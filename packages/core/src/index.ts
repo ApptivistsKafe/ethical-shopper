@@ -10,6 +10,8 @@ export {
   computeOverallScore,
   numericToEthicalStatus,
   ethicalStatusToNumeric,
+  clampUserWeight,
+  MAX_USER_WEIGHT,
   filterVisibleCategories,
   composeExplanation,
   buildCompanyView,
@@ -29,6 +31,9 @@ export {
   CartSchema,
   CartItemSchema,
   CategorySuggestionSchema,
+  UserWeightsSchema,
+  AnalyzeRequestSchema,
+  SuggestRequestSchema,
   parseScoringResponse,
   parseCart,
 } from './schemas.js'
@@ -49,6 +54,11 @@ export type {
 
 // Suggestions
 export { normalizeSuggestionLabel, buildSuggestion } from './suggestions.js'
+
+// Prompt-safety utilities
+export { sanitizeUntrustedText, sanitizeSnippet, wrapUntrusted } from './sanitize.js'
+export type { SanitizeOptions } from './sanitize.js'
+export { extractJsonObject } from './modelJson.js'
 
 // In-memory Store — a real (non-fake) implementation suitable for dev/demo environments
 // where persistence across restarts is not required.

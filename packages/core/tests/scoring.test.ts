@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   computeOverallScore,
   numericToEthicalStatus,
+  clampUserWeight,
+  MAX_USER_WEIGHT,
   filterVisibleCategories,
   composeExplanation,
   buildCompanyView,
@@ -148,6 +150,40 @@ describe('computeOverallScore', () => {
 
   it('neutral value is 3 (Mixed) — the NEUTRAL_ROLLUP_VALUE constant', () => {
     expect(NEUTRAL_ROLLUP_VALUE).toBe(3)
+  })
+
+  it('NEGATIVE weights cannot invert polarity — treated as opt-out', () => {
+    // All categories Poor; a malicious client sends a large negative weight
+    // hoping to flip Poor contributions into positive ones.
+    const allPoor = categoriesWithScores(
+      Object.fromEntries(ALL_CATEGORY_IDS.map((id) => [id, EthicalStatus.Poor])) as any,
+    )
+    const attacked = computeOverallScore(allPoor, { political_giving: -50, labor: -50 })
+    // Negative weights clamp to 0 (opt-out); the remaining Poor categories dominate.
+    expect(attacked).toBe(EthicalStatus.Poor)
+  })
+
+  it('non-finite weights are treated as opt-out, not honored', () => {
+    const cats = categoriesWithScores({ labor: EthicalStatus.Poor })
+    expect(() => computeOverallScore(cats, { labor: Infinity })).not.toThrow()
+    // NaN weight must not poison the rollup into NaN — result stays a valid band
+    const withNaN = computeOverallScore(cats, { labor: NaN })
+    expect(Object.values(EthicalStatus)).toContain(withNaN)
+  })
+
+  it('clampUserWeight clamps to [0, MAX_USER_WEIGHT]', () => {
+    expect(clampUserWeight(undefined)).toBeUndefined()
+    expect(clampUserWeight(-1)).toBe(0)
+    expect(clampUserWeight(0)).toBe(0)
+    expect(clampUserWeight(2)).toBe(2)
+    expect(clampUserWeight(999)).toBe(MAX_USER_WEIGHT)
+    expect(clampUserWeight(NaN)).toBe(0)
+  })
+
+  it('negative weight also hides the category from display (filterVisibleCategories)', () => {
+    const cats = categoriesWithScores({ political_giving: EthicalStatus.Poor })
+    const visible = filterVisibleCategories(cats, { political_giving: -3 })
+    expect(visible.some((c) => c.id === 'political_giving')).toBe(false)
   })
 })
 

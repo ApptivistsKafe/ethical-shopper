@@ -83,11 +83,36 @@ export const CartItemSchema = z.object({
 })
 
 export const CartSchema = z.object({
-  items: z.array(CartItemSchema).min(1),
+  // Empty carts are valid — extraction finding nothing is a graceful "no items"
+  // outcome, not an error.
+  items: z.array(CartItemSchema),
   sourceUrl: z.string(),
 })
 
 export type CartSchemaType = z.infer<typeof CartSchema>
+
+// ─── API Request Validation ───────────────────────────────────────────────────
+
+/**
+ * User weights from an untrusted client. Bounds enforced here AND clamped again
+ * in scoring (defense in depth) — negative weights would invert category
+ * polarity, which is explicitly disallowed.
+ */
+export const UserWeightsSchema = z.record(
+  CategoryIdSchema,
+  z.number().min(0).max(10),
+)
+
+export const AnalyzeRequestSchema = z.object({
+  markdown: z.string().min(1).max(200_000),
+  url: z.string().min(1).max(2_000),
+  userWeights: UserWeightsSchema.optional(),
+})
+
+export const SuggestRequestSchema = z.object({
+  label: z.string().trim().min(2).max(80),
+  rationale: z.string().trim().max(500).optional(),
+})
 
 // ─── Category Suggestion ──────────────────────────────────────────────────────
 
