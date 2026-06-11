@@ -168,3 +168,32 @@ export type AnalyzeStreamEvent =
   | { type: 'companyView'; view: CompanyView }
   | { type: 'done' }
   | { type: 'error'; message: string }
+
+// ─── Recommendations (Spec 2) ─────────────────────────────────────────────────
+
+/** An alternative product proposed by the recommendation model. */
+export interface AlternativeProduct {
+  productName: string
+  /** The brand making the alternative — also the company that gets ethics-scored. */
+  brand: string
+  /** Where to buy it, when the model knows (often the brand's own site). */
+  sellingCompany: string | null
+  approxPrice: number | null
+  url: string | null
+  /** One-sentence, factual reason this is an ethical upgrade. */
+  reason: string
+}
+
+/** An alternative enriched with the brand's cached ethics view (null if scoring failed). */
+export interface AlternativeWithView extends AlternativeProduct {
+  companyView: CompanyView | null
+}
+
+export interface RecommendRequest {
+  item: CartItem
+  userWeights?: UserWeights
+}
+
+export interface RecommendResponse {
+  alternatives: AlternativeWithView[]
+}

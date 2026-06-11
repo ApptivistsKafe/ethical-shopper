@@ -3,6 +3,7 @@ import type { Cart, CompanyView, AnalyzeStreamEvent, UserWeights } from '@ethica
 import { streamAnalysis } from '../services/analyzeStream'
 import { CompanyCard } from './CompanyCard'
 import { SuggestionFooter } from './SuggestionFooter'
+import { ItemAlternatives } from './ItemAlternatives'
 
 interface EthicalPanelProps {
   markdown: string
@@ -169,6 +170,31 @@ export function EthicalPanel({ markdown, pageUrl, userWeights, onDismiss }: Ethi
         {/* Empty state — scored everything and found nothing */}
         {done && views.length === 0 && errors.length === 0 && (
           <p style={loadingMsg}>No companies identified in this cart.</p>
+        )}
+
+        {/* Per-item ethical alternatives (Spec 2) — on-demand, never auto-fired */}
+        {done && cart !== null && cart.items.length > 0 && (
+          <div style={{ margin: '8px 8px 0', borderTop: '1px solid #f0f0f0', paddingTop: '6px' }}>
+            <div
+              style={{
+                fontSize: '10px',
+                fontWeight: 600,
+                color: '#999',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '2px',
+              }}
+            >
+              Your items
+            </div>
+            {cart.items.map((item, i) => (
+              <ItemAlternatives
+                key={`${item.name}-${i.toString()}`}
+                item={item}
+                userWeights={userWeights}
+              />
+            ))}
+          </div>
         )}
 
         {/* User suggestion footer — appears once results are in */}

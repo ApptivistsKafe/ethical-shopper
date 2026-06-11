@@ -34,10 +34,13 @@ export {
   UserWeightsSchema,
   AnalyzeRequestSchema,
   SuggestRequestSchema,
+  RecommendRequestSchema,
+  ModelRecommendResponseSchema,
   parseScoringResponse,
   parseCart,
+  parseRecommendResponse,
 } from './schemas.js'
-export type { ModelScoringResponse, CartSchemaType } from './schemas.js'
+export type { ModelScoringResponse, ModelRecommendResponse, CartSchemaType } from './schemas.js'
 
 // Interfaces
 export type {

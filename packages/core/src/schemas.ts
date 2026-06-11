@@ -109,6 +109,39 @@ export const SuggestRequestSchema = z.object({
   rationale: z.string().trim().max(500).optional(),
 })
 
+// ─── Recommendations (Spec 2) ─────────────────────────────────────────────────
+
+export const RecommendRequestSchema = z.object({
+  item: CartItemSchema,
+  userWeights: UserWeightsSchema.optional(),
+})
+
+/**
+ * What the recommendation model is asked to return.
+ * Ethics views are NOT included — alternatives' brands are scored separately
+ * through the cached scoreCompany pipeline for consistency with /analyze.
+ */
+export const ModelRecommendResponseSchema = z.object({
+  alternatives: z
+    .array(
+      z.object({
+        productName: z.string().min(1),
+        brand: z.string().min(1),
+        sellingCompany: z.string().nullable(),
+        approxPrice: z.number().nullable(),
+        url: z.string().nullable(),
+        reason: z.string().min(1),
+      }),
+    )
+    .max(5),
+})
+
+export type ModelRecommendResponse = z.infer<typeof ModelRecommendResponseSchema>
+
+export function parseRecommendResponse(raw: unknown): ModelRecommendResponse {
+  return ModelRecommendResponseSchema.parse(raw)
+}
+
 // ─── Category Suggestion ──────────────────────────────────────────────────────
 
 export const CategorySuggestionSchema = z.object({

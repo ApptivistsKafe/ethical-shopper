@@ -1,4 +1,10 @@
-import type { AnalyzeStreamEvent, AnalyzeRequest } from '@ethical-shopper/core'
+import type {
+  AnalyzeStreamEvent,
+  AnalyzeRequest,
+  CartItem,
+  UserWeights,
+  RecommendResponse,
+} from '@ethical-shopper/core'
 
 // Injected at build time by wxt.config.ts (and by vitest.config.ts in tests).
 declare const __API_BASE_URL__: string
@@ -89,6 +95,25 @@ export async function* streamAnalysis(
   } finally {
     reader.releaseLock()
   }
+}
+
+/**
+ * Fetches ethical alternatives for one cart item from POST /api/recommend.
+ * Throws on network or HTTP errors — the caller renders the failure state.
+ */
+export async function fetchAlternatives(
+  item: CartItem,
+  userWeights?: UserWeights,
+): Promise<RecommendResponse> {
+  const response = await fetch(`${__API_BASE_URL__}/api/recommend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ item, userWeights }),
+  })
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status.toString()}`)
+  }
+  return (await response.json()) as RecommendResponse
 }
 
 /**

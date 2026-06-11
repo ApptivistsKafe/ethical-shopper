@@ -8,6 +8,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "vercel dev",
+    "dev:local": "tsx dev-server.ts",
     "eval": "tsx evals/run-eval.ts",
     "typecheck": "tsc --noEmit"
   },
