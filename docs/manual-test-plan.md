@@ -125,6 +125,33 @@ After the company cards finish (the "Your items" section appears at the bottom):
 | 7.4 | A cart page where extraction finds nothing (e.g. an empty cart) | "No companies identified in this cart." — not an error |
 | 7.5 | While cards are still streaming, hit ✕ | Clean dismiss, no late-arriving ghost UI |
 
+## 7b. Content-safety gate (the OnlyFans problem)
+
+The gate must positively confirm "branded-product checkout" AND not look adult,
+on **both** the client (before anything is sent) and the server (backstop).
+
+| # | Step | Expect |
+|---|---|---|
+| 7b.1 | Browse to a non-shopping page that happens to have `/cart` or `/checkout` in the URL (e.g. a blog post, news article, SaaS pricing page) | **No panel appears** — the client gate rejects it before sending |
+| 7b.2 | Open DevTools console on such a page | No `/api/analyze` request is made at all (content never leaves the machine) |
+| 7b.3 | A real product cart page (Amazon/Etsy/Shopify store) | Panel appears as normal — gate allows |
+| 7b.4 | (Server backstop) curl a news-article body to `/analyze` | `HTTP 422` `{"error":"Unsupported page…","reasons":[…]}` — rejected before any LLM call |
+| 7b.5 | (Server backstop) curl an `onlyfans.com` URL with any body | `HTTP 422` — adult domain caught |
+
+```sh
+# 7b.4 — server rejects a non-commerce page (no spend)
+curl -s -w '\n%{http_code}\n' -X POST localhost:3000/api/analyze \
+  -H 'Content-Type: application/json' \
+  --data "$(python3 -c 'import json;print(json.dumps({"markdown":open("packages/core/tests/fixtures/news-article.md").read(),"url":"https://news.example.com/x"}))')"
+# expect: 422 with reasons
+
+# 7b.5 — adult domain rejected regardless of body
+curl -s -w '\n%{http_code}\n' -X POST localhost:3000/api/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"markdown":"Subscribe $9.99 checkout subtotal","url":"https://onlyfans.com/x"}'
+# expect: 422
+```
+
 ## 8. API-level checks (curl — things the UX can't reach)
 
 With the dev server running:
