@@ -5,12 +5,17 @@
  * the actual model + rubric produce sane scores. It runs MANUALLY or on a
  * schedule — never in per-commit CI — because it costs real money.
  *
- *   OPENROUTER_API_KEY=sk-... pnpm eval
+ *   pnpm eval                 (reads keys from the gitignored repo-root .env)
  *
  * Budget controls:
- *   EVAL_MAX_COMPANIES  cap on companies scored per run (default: all fixtures)
- *   SCORING_MODEL       override the model under test
- *   BRAVE_API_KEY       optional — enables web-context enrichment like production
+ *   EVAL_OPENROUTER_API_KEY  dedicated, separately-capped key for evals.
+ *                            Falls back to OPENROUTER_API_KEY if unset.
+ *   EVAL_MAX_COMPANIES       cap on companies scored per run (default: all fixtures)
+ *   SCORING_MODEL            override the model under test
+ *   BRAVE_API_KEY            optional — enables web-context enrichment like production
+ *
+ * Using a separate eval key (with its own OpenRouter credit limit) means a
+ * runaway eval can never eat the budget the deployed extension depends on.
  *
  * Assertions are DIRECTIONAL BANDS, not exact scores: model output legitimately
  * varies run to run; what must hold is that companies with well-documented
@@ -18,6 +23,9 @@
  *
  * TODO(Tier-2): add LLM-as-judge checks on blurb quality (factuality, specificity).
  */
+import { loadLocalEnv } from '../src/lib/loadEnv.js'
+loadLocalEnv(import.meta.url)
+
 import { EthicalStatus } from '@ethical-shopper/core'
 import { InMemoryStore } from '@ethical-shopper/core'
 import { OpenRouterProvider } from '../src/providers/OpenRouterProvider.js'
@@ -61,22 +69,28 @@ const FIXTURES: EvalFixture[] = [
 ]
 
 async function main(): Promise<void> {
-  if (!process.env['OPENROUTER_API_KEY']) {
-    console.error('OPENROUTER_API_KEY is required — this harness makes real model calls.')
-    console.error('Usage: OPENROUTER_API_KEY=sk-... pnpm eval')
+  // Prefer the dedicated, separately-capped eval key; fall back to the main key.
+  const apiKey = process.env['EVAL_OPENROUTER_API_KEY'] ?? process.env['OPENROUTER_API_KEY']
+  if (!apiKey) {
+    console.error('No API key — this harness makes real model calls.')
+    console.error('Set EVAL_OPENROUTER_API_KEY (preferred) or OPENROUTER_API_KEY in .env')
     process.exit(2)
   }
+  const usingDedicatedKey = Boolean(process.env['EVAL_OPENROUTER_API_KEY'])
 
   const maxCompanies = Number(process.env['EVAL_MAX_COMPANIES'] ?? FIXTURES.length)
   const fixtures = FIXTURES.slice(0, maxCompanies)
   const model = process.env['SCORING_MODEL'] ?? 'anthropic/claude-sonnet-4-5'
 
-  const provider = new OpenRouterProvider({ model, timeoutMs: 45_000 })
+  const provider = new OpenRouterProvider({ model, apiKey, timeoutMs: 45_000 })
   const contextSource = process.env['BRAVE_API_KEY'] ? new BraveSearchSource() : undefined
   const store = new InMemoryStore()
   const scoreCompany = makeScoreCompanyFn(contextSource)
 
   console.log(`\nTier-2 eval — model: ${model}, context: ${contextSource ? 'web search' : 'none'}`)
+  console.log(
+    `key: ${usingDedicatedKey ? 'EVAL_OPENROUTER_API_KEY (dedicated)' : 'OPENROUTER_API_KEY (shared)'}`,
+  )
   console.log(`Scoring ${fixtures.length} companies…\n`)
 
   let failures = 0

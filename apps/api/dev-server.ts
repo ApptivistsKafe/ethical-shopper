@@ -8,32 +8,11 @@
  * Pair with an extension built via:  API_BASE_URL=http://localhost:3000 pnpm build
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { readFileSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { loadLocalEnv } from './src/lib/loadEnv.js'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env['PORT'] ?? 3000)
 
-// ─── Minimal .env loader (no dotenv dependency) ───────────────────────────────
-
-function loadEnvFile(path: string): void {
-  let content: string
-  try {
-    content = readFileSync(path, 'utf8')
-  } catch {
-    return
-  }
-  for (const line of content.split('\n')) {
-    const match = /^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/.exec(line)
-    if (match?.[1] && match[2] !== undefined && !(match[1] in process.env)) {
-      process.env[match[1]] = match[2].replace(/^["']|["']$/g, '')
-    }
-  }
-}
-
-loadEnvFile(resolve(__dirname, '../../.env'))
-loadEnvFile(resolve(__dirname, '.env'))
+loadLocalEnv(import.meta.url)
 
 // ─── Vercel req/res shims ─────────────────────────────────────────────────────
 
