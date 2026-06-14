@@ -13,6 +13,10 @@
     "./fakes": {
       "import": "./dist/fakes/index.js",
       "types": "./dist/fakes/index.d.ts"
+    },
+    "./pageClassifier": {
+      "import": "./dist/pageClassifier.js",
+      "types": "./dist/pageClassifier.d.ts"
     }
   },
   "scripts": {

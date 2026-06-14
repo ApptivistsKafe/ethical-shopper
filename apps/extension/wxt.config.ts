@@ -39,11 +39,20 @@ export default defineConfig({
       __API_TOKEN__: JSON.stringify(process.env['API_TOKEN'] ?? ''),
     },
     resolve: {
-      alias: {
-        // Resolve workspace package from TypeScript source so Vite
-        // can tree-shake and type-check in one pass (no separate build step).
-        '@ethical-shopper/core': resolve(__dirname, '../../packages/core/src/index.ts'),
-      },
+      // Resolve the workspace package from TypeScript source (no separate build
+      // step). The subpath alias MUST come first and map to the self-contained
+      // pageClassifier module so the content script never pulls in Zod via the
+      // barrel — it runs on every page and must stay lean.
+      alias: [
+        {
+          find: '@ethical-shopper/core/pageClassifier',
+          replacement: resolve(__dirname, '../../packages/core/src/pageClassifier.ts'),
+        },
+        {
+          find: '@ethical-shopper/core',
+          replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
+        },
+      ],
     },
   }),
 })

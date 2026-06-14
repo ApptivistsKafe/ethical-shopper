@@ -4,6 +4,7 @@ import {
   type Store,
   AnalyzeRequestSchema,
   buildCompanyView,
+  classifyText,
   InMemoryStore,
 } from '@ethical-shopper/core'
 import { OpenRouterProvider } from '../src/providers/OpenRouterProvider.js'
@@ -96,6 +97,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
   const { markdown, url: pageUrl, userWeights = {} } = parsed.data
+
+  // ── Content-safety gate (server backstop) ─────────────────────────────────
+  // The extension runs this gate client-side from the live DOM before sending,
+  // but an attacker hitting this endpoint directly controls the payload — so we
+  // re-check here on the exact content we're about to forward to the LLM, using
+  // only signals we can independently trust from the text + URL. Reject non-
+  // commerce or adult content BEFORE any model call (no spend, no exposure).
+  const classification = classifyText(markdown, pageUrl)
+  if (classification.decision === 'reject') {
+    res.status(422).json({
+      error: 'Unsupported page — this does not look like a product checkout page.',
+      reasons: classification.reasons,
+    })
+    return
+  }
 
   // ── Build providers ─────────────────────────────────────────────────────────
   let extractionProvider: OpenRouterProvider

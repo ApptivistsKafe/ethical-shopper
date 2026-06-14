@@ -1,4 +1,5 @@
 import { isCheckoutPage } from '../src/services/checkoutDetector'
+import { classifyDom } from '../src/services/pageGate'
 
 /**
  * Content script entry — deliberately tiny.
@@ -9,6 +10,7 @@ import { isCheckoutPage } from '../src/services/checkoutDetector'
  *
  * Handles:
  *  - pause state (extensionPaused in chrome.storage.local)
+ *  - content-safety gate (never send non-commerce or adult content off-machine)
  *  - SPA navigation (wxt:locationchange) — mounts/dismisses as the URL changes
  */
 export default defineContentScript({
@@ -31,6 +33,15 @@ export default defineContentScript({
         dismiss()
         return
       }
+
+      // Content-safety gate — must positively look like a product checkout and
+      // not look like adult content. Runs on the live DOM BEFORE anything is
+      // sent, so non-commerce/adult pages never leave the user's machine.
+      if (classifyDom(document).decision === 'reject') {
+        dismiss()
+        return
+      }
+
       if (dismissPanel) return // already mounted on this page
 
       mounting = true

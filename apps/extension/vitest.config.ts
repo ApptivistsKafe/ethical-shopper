@@ -11,7 +11,12 @@ export default defineConfig({
     __API_TOKEN__: JSON.stringify(''),
   },
   resolve: {
+    // More-specific subpath alias first (see wxt.config.ts).
     alias: [
+      {
+        find: '@ethical-shopper/core/pageClassifier',
+        replacement: resolve(__dirname, '../../packages/core/src/pageClassifier.ts'),
+      },
       {
         find: '@ethical-shopper/core',
         replacement: resolve(__dirname, '../../packages/core/src/index.ts'),

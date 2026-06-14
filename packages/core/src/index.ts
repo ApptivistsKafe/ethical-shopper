@@ -63,6 +63,21 @@ export { sanitizeUntrustedText, sanitizeSnippet, wrapUntrusted } from './sanitiz
 export type { SanitizeOptions } from './sanitize.js'
 export { extractJsonObject } from './modelJson.js'
 
+// Content-safety gate (page classification — shared by client + server)
+export {
+  classifyPage,
+  classifyText,
+  extractTextSignals,
+  isAdultHost,
+  countDistinctKeywords,
+  countMatches,
+  MIN_COMMERCE_KEYWORDS,
+  MIN_ADULT_KEYWORDS,
+  RTA_LABEL,
+  PAGE_CLASSIFIER_VOCAB,
+} from './pageClassifier.js'
+export type { PageSignals, PageDecision, PageClassification } from './pageClassifier.js'
+
 // In-memory Store — a real (non-fake) implementation suitable for dev/demo environments
 // where persistence across restarts is not required.
 export { InMemoryStore } from './fakes/InMemoryStore.js'
