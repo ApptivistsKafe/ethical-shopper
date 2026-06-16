@@ -50,11 +50,13 @@ export class PostgresStore implements Store {
   }
 
   async setReport(report: EthicsReport): Promise<void> {
-    // Pass JSON as a string parameter; ::jsonb cast happens in SQL so no type gymnastics needed.
-    const jsonData = JSON.stringify(report)
+    // Use sql.json() so postgres.js serializes the object ONCE into the jsonb
+    // column. (A manual JSON.stringify + ::jsonb cast double-encodes it into a
+    // jsonb *string*, which then fails EthicsReportSchema.safeParse on read —
+    // turning every cache lookup into a miss. Verified against the real DB.)
     await this.sql`
       INSERT INTO ethics_reports (cache_key, data, scored_at)
-      VALUES (${report.meta.cacheKey}, ${jsonData}::jsonb, NOW())
+      VALUES (${report.meta.cacheKey}, ${this.sql.json(report as unknown as Parameters<typeof this.sql.json>[0])}, NOW())
       ON CONFLICT (cache_key)
       DO UPDATE SET data = EXCLUDED.data, scored_at = NOW()
     `
