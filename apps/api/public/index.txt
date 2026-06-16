@@ -1,0 +1,1 @@
+Ethical Shopper API — serverless functions only. See /api/*.

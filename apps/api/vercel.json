@@ -1,5 +1,9 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @ethical-shopper/core build",
+  "outputDirectory": "public",
   "functions": {
     "api/*.ts": {
       "maxDuration": 60
