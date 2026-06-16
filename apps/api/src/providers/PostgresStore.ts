@@ -5,11 +5,16 @@ import type { Store, EthicsReport, CategorySuggestion } from '@ethical-shopper/c
 const DEFAULT_STALE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 /**
- * Store implementation backed by PostgreSQL (Neon or any standard Postgres >=14).
+ * Store implementation backed by PostgreSQL (Supabase, Neon, or any standard
+ * Postgres >=14).
  *
  * Designed for serverless environments:
  *  - max: 1 connection per process (lambda invocations are ephemeral)
- *  - ssl: 'require' for Neon/managed providers
+ *  - ssl: 'require' for managed providers
+ *  - prepare: false — REQUIRED when connecting through a transaction-mode pooler
+ *    (Supabase's recommended serverless connection, port 6543; also PgBouncer in
+ *    transaction mode). Such poolers don't support prepared/named statements.
+ *    Use the POOLED connection string in production, not the direct one.
  *
  * Schema: see apps/api/schema.sql
  */
@@ -26,6 +31,7 @@ export class PostgresStore implements Store {
     this.sql = postgres(url, {
       ssl: 'require',
       max: 1, // one connection per serverless invocation
+      prepare: false, // transaction-pooler compatible (Supabase / PgBouncer)
       idle_timeout: 20,
       connect_timeout: 10,
     })
