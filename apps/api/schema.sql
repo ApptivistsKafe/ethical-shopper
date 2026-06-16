@@ -36,3 +36,20 @@ CREATE INDEX IF NOT EXISTS idx_category_suggestions_label_source
 
 CREATE INDEX IF NOT EXISTS idx_category_suggestions_source_created
   ON category_suggestions (source, created_at DESC);
+
+-- ─── Row Level Security ──────────────────────────────────────────────────────
+-- Supabase auto-exposes a public PostgREST API over these tables via the anon
+-- key. Enable RLS with NO policies so that public/anon access is denied by
+-- default. Our backend connects via the pooled connection string as the
+-- `postgres` role, which BYPASSES RLS (table owners bypass it) — so the API
+-- keeps full access while the public endpoint is locked down.
+--
+-- IMPORTANT: ENABLE, not FORCE. FORCE would subject the owner role to RLS too
+-- and break the backend's bypass. When accounts land (APP-28) and the extension
+-- may hit Supabase directly with user JWTs (the `authenticated` role does NOT
+-- bypass RLS), add explicit per-user policies at that point.
+--
+-- No-op on non-Supabase Postgres (Neon etc.) — harmless to run anywhere.
+
+ALTER TABLE ethics_reports        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE category_suggestions  ENABLE ROW LEVEL SECURITY;
