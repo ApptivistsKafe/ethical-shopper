@@ -49,3 +49,4 @@ backend/src/formatted_test.json
 .turbo/
 .output/
 .wxt/
+.vercel
