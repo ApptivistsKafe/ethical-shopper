@@ -1,10 +1,56 @@
 import { describe, it, expect } from 'vitest'
 import { JSDOM } from 'jsdom'
-import { extractDomSignals, classifyDom } from '../src/services/pageGate'
+import { extractDomSignals, classifyDom, textLooksLikeCart } from '../src/services/pageGate'
 
 function domFrom(html: string, url: string): Document {
   return new JSDOM(html, { url }).window.document
 }
+
+// ─── Generalizable cart detection (URL-independent) ──────────────────────────────
+
+describe('textLooksLikeCart', () => {
+  it('detects a cart from subtotal + price (no URL needed — drawer case)', () => {
+    expect(
+      textLooksLikeCart('Your Cart (2)\nWomens Lounger\nSubtotal $128.00\nProceed to checkout'),
+    ).toBe(true)
+  })
+
+  it('detects an Amazon-style cart', () => {
+    expect(
+      textLooksLikeCart('Shopping Cart\nSubtotal (3 items): $102.74\nProceed to checkout'),
+    ).toBe(true)
+  })
+
+  it('does NOT fire on a product-listing page (prices + add-to-cart, no checkout affordance)', () => {
+    expect(textLooksLikeCart('Running Shoes $98.00  Add to cart  Quantity  Free shipping')).toBe(
+      false,
+    )
+  })
+
+  it('does NOT fire on a content page with no commerce', () => {
+    expect(textLooksLikeCart('Coffee is a brewed drink prepared from roasted coffee beans.')).toBe(
+      false,
+    )
+  })
+
+  it('does NOT fire on a shopping homepage with a "your cart" nav label + prices', () => {
+    // Regression: the Amazon homepage has "Your Cart" (cart-icon label) + many
+    // prices but is not a cart — weak labels must not trigger detection.
+    expect(
+      textLooksLikeCart(
+        'Deals of the day $19.99 $5.00 $129.00  Hello, sign in  Your Cart  Buy again',
+      ),
+    ).toBe(false)
+  })
+
+  it('requires a price even when an affordance is present', () => {
+    expect(textLooksLikeCart('Your cart is empty. Continue shopping.')).toBe(false)
+  })
+
+  it('returns false for empty text', () => {
+    expect(textLooksLikeCart('')).toBe(false)
+  })
+})
 
 // ─── DOM signal extraction ──────────────────────────────────────────────────────
 

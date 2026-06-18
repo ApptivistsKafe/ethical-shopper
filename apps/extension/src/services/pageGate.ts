@@ -42,6 +42,54 @@ export function classifyDom(doc: Document): PageClassification {
   return classifyPage(extractDomSignals(doc))
 }
 
+// ─── Generalizable cart detection ───────────────────────────────────────────────
+
+/**
+ * STRONG cart/checkout affordances — phrases that appear only when an actual
+ * cart/checkout total is being VIEWED, not in nav/header chrome. Deliberately
+ * excludes weak labels like "your cart"/"your bag", which appear on shopping
+ * homepages as cart-icon labels or mini-cart previews and caused false positives
+ * (e.g. the Amazon homepage). A real cart always shows a subtotal/total and a
+ * checkout button, so this stays high-recall while being high-precision and
+ * fully site-agnostic.
+ */
+const CART_AFFORDANCE_KEYWORDS = [
+  'proceed to checkout',
+  'continue to checkout',
+  'go to checkout',
+  'secure checkout',
+  'subtotal',
+  'cart subtotal',
+  'order summary',
+  'order total',
+  'estimated total',
+  'review your order',
+] as const
+
+/**
+ * Detects whether a cart/checkout is currently VISIBLE on the page — works
+ * regardless of URL, so it catches cart drawers / SPA carts (Allbirds, most
+ * Shopify themes, Amazon's slide-out) that never navigate to a /cart URL.
+ *
+ * Uses `innerText` (visible text only) so a hidden/closed drawer doesn't count
+ * until the user opens it. Requires a checkout/subtotal affordance AND a price —
+ * tight enough to ignore product-listing pages, which have prices + "add to
+ * cart" but not "subtotal"/"proceed to checkout".
+ */
+export function isLikelyCart(doc: Document): boolean {
+  // innerText = VISIBLE text only (a closed drawer contributes nothing); fall
+  // back to textContent for environments (jsdom) that don't implement innerText.
+  return textLooksLikeCart(doc.body?.innerText ?? doc.body?.textContent ?? '')
+}
+
+/** Pure cart heuristic over a block of visible text. Exposed for testing. */
+export function textLooksLikeCart(visibleText: string): boolean {
+  const t = visibleText.toLowerCase()
+  if (!t) return false
+  if (countDistinctKeywords(t, CART_AFFORDANCE_KEYWORDS) < 1) return false
+  return countMatches(visibleText, new RegExp(PAGE_CLASSIFIER_VOCAB.PRICE_RE)) >= 1
+}
+
 // ─── DOM-only signal helpers ────────────────────────────────────────────────────
 
 /** schema.org Product/Offer JSON-LD, or og:type=product. */

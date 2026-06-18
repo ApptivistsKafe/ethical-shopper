@@ -1,5 +1,5 @@
 import { isCheckoutPage } from '../src/services/checkoutDetector'
-import { classifyDom } from '../src/services/pageGate'
+import { classifyDom, isLikelyCart } from '../src/services/pageGate'
 import { mountPanel } from '../src/ui/mountPanel'
 
 /**
@@ -33,7 +33,11 @@ export default defineContentScript({
       if (mounting) return
 
       const paused = await isPaused()
-      if (paused || !isCheckoutPage(window.location.href, document)) {
+      // Trigger on a known checkout URL (fast path / big-site rules) OR on a
+      // visible cart detected from the DOM (generalizable — catches cart drawers
+      // and SPA carts that never change the URL).
+      const looksLikeCart = isCheckoutPage(window.location.href, document) || isLikelyCart(document)
+      if (paused || !looksLikeCart) {
         dismiss()
         return
       }
@@ -75,6 +79,20 @@ export default defineContentScript({
       dismiss()
       schedule()
     })
+
+    // Watch for a cart appearing dynamically (a drawer/modal opening) without a
+    // URL change. Debounced so it coalesces bursts of mutations into one check,
+    // and it does nothing once the panel is mounted (or was dismissed) — the
+    // stale dismissPanel ref guards against re-popping after the user closes it.
+    let mutationTimer: number | undefined
+    const observer = new MutationObserver(() => {
+      if (dismissPanel || mounting) return
+      if (mutationTimer !== undefined) clearTimeout(mutationTimer)
+      mutationTimer = ctx.setTimeout(() => void evaluate(), 800)
+    })
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true })
+    }
 
     // React to the pause toggle while the page is open.
     chrome.storage.onChanged.addListener((changes, area) => {
