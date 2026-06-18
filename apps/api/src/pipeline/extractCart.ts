@@ -28,11 +28,19 @@ Extract:
 - items: array of cart line items (name, brand, sellingCompany, price, url)
 - sourceUrl: the URL of the page provided
 
-CRITICAL — include ONLY products the user has actually added to their cart/bag.
-Do NOT include recommendations, upsells, or suggested products. Ignore anything
-under headings like "Complete your basket", "Recommended for you", "You may also
-like", "Customers also bought", "Sponsored", "Frequently bought together", or
-"Recently viewed". When unsure whether a product is in the cart vs. suggested,
+CRITICAL — include ONLY products in the ACTIVE cart that are part of THIS
+checkout (the items counted in the order subtotal). These almost always appear
+ABOVE the "Subtotal" / "Proceed to checkout" area.
+
+Do NOT include any of the following, which typically appear lower on the page:
+- "Saved for later", "Saved items", "Move to cart" items
+- "Buy it again", "Recently viewed", "Wish list"
+- Recommendations / upsells: "Complete your basket", "Recommended for you",
+  "You may also like", "Customers also bought", "Sponsored",
+  "Frequently bought together", "Add-ons"
+
+If the item count is shown (e.g. "Subtotal (3 items)"), the number of extracted
+items should match it. When unsure whether a product is in the active cart,
 leave it out.
 
 If the page contains no identifiable cart items, return {"items": [], "sourceUrl": "..."}.
