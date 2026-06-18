@@ -18,10 +18,15 @@ const SITE_RULES: SiteRule[] = [
       /amazon\.com\/gp\/cart\/view\.html/,
     ],
   },
-  { domain: 'ebay.com', patterns: [/ebay\.com\/myb\/PurchaseHistory/, /ebay\.com\/csc\/home/] },
-  { domain: 'etsy.com', patterns: [/etsy\.com\/cart/, /etsy\.com\/your\/purchases/] },
-  { domain: 'walmart.com', patterns: [/walmart\.com\/checkout/] },
-  { domain: 'target.com', patterns: [/target\.com\/co-cart/, /target\.com\/co-review/] },
+  // eBay's cart lives on cart.ebay.com; checkout on pay.ebay.com. (The old rules
+  // pointed at purchase-history / customer-service pages — wrong on both counts.)
+  { domain: 'ebay.com', patterns: [/cart\.ebay\.com/, /pay\.ebay\.com/, /ebay\.com\/.*\/cart/] },
+  { domain: 'etsy.com', patterns: [/etsy\.com\/cart/, /etsy\.com\/.*\/checkout/] },
+  { domain: 'walmart.com', patterns: [/walmart\.com\/checkout/, /walmart\.com\/cart/] },
+  {
+    domain: 'target.com',
+    patterns: [/target\.com\/cart/, /target\.com\/co-cart/, /target\.com\/co-review/],
+  },
   { domain: 'bestbuy.com', patterns: [/bestbuy\.com\/checkout/, /bestbuy\.com\/cart/] },
   { domain: 'wayfair.com', patterns: [/wayfair\.com\/checkout/, /wayfair\.com\/cart/] },
   { domain: 'homedepot.com', patterns: [/homedepot\.com\/checkout/, /homedepot\.com\/mycart/] },

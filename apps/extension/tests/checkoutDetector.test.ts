@@ -17,8 +17,12 @@ describe('isCheckoutPage — domain-specific patterns', () => {
     )
   })
 
-  it('detects eBay purchase history (post-checkout)', () => {
-    expect(isCheckoutPage('https://www.ebay.com/myb/PurchaseHistory', doc)).toBe(true)
+  it('detects the eBay cart (cart.ebay.com)', () => {
+    expect(isCheckoutPage('https://cart.ebay.com/', doc)).toBe(true)
+  })
+
+  it('does NOT trigger on eBay purchase history (not a cart)', () => {
+    expect(isCheckoutPage('https://www.ebay.com/myb/PurchaseHistory', doc)).toBe(false)
   })
 
   it('detects Etsy cart', () => {
