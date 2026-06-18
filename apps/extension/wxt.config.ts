@@ -18,13 +18,6 @@ export default defineConfig({
       '96': 'icon/96.png',
       '128': 'icon/128.png',
     },
-    web_accessible_resources: [
-      {
-        // The lazily-imported panel bundle (see entrypoints/panel.ts)
-        resources: ['panel.js', 'chunks/*'],
-        matches: ['<all_urls>'],
-      },
-    ],
   },
 
   // Build-time injection:

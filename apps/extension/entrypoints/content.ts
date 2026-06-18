@@ -1,12 +1,16 @@
 import { isCheckoutPage } from '../src/services/checkoutDetector'
 import { classifyDom } from '../src/services/pageGate'
+import { mountPanel } from '../src/ui/mountPanel'
 
 /**
- * Content script entry — deliberately tiny.
+ * Content script entry.
  *
- * React, Turndown, and the panel components live in a separate chunk that is
- * dynamically imported ONLY after checkout detection passes, so the ~240 kB
- * UI bundle is never parsed on ordinary browsing.
+ * The panel UI (React + Turndown) is bundled directly into this content script
+ * so it runs in the content-script isolated world. (An earlier attempt to
+ * lazy-load it via `import(chrome.runtime.getURL('panel.js'))` failed silently:
+ * WXT builds unlisted scripts as IIFEs, not ES modules, so the dynamic import
+ * yielded no `default` export and the mount threw.) The heavy work still only
+ * runs after the gate passes — the per-page cost is just parsing the bundle.
  *
  * Handles:
  *  - pause state (extensionPaused in chrome.storage.local)
@@ -46,14 +50,7 @@ export default defineContentScript({
 
       mounting = true
       try {
-        // Heavy bundle (React + Turndown + panel UI) loads only now, via the
-        // web-accessible unlisted script — see entrypoints/panel.ts.
-        const mod = (await import(/* @vite-ignore */ chrome.runtime.getURL('/panel.js'))) as {
-          default: Promise<() => () => void>
-        }
-        const mountPanel = await mod.default
-        // Re-check state after the async gap — the user may have navigated away.
-        if (!ctx.isValid || !isCheckoutPage(window.location.href, document)) return
+        if (!ctx.isValid) return
         dismissPanel = mountPanel()
       } finally {
         mounting = false
