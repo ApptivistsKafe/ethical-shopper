@@ -24,13 +24,15 @@ export function mountPanel(): () => void {
 
   const host = document.createElement('div')
   host.id = HOST_ID
-  Object.assign(host.style, {
-    position: 'fixed',
-    top: '12px',
-    right: '12px',
-    zIndex: '2147483647',
-    all: 'initial',
-  })
+  // `all: initial` isolates the host box from the page's CSS, but it also resets
+  // any positioning set alongside it — so apply it FIRST, then force the fixed
+  // positioning with !important so neither `all` nor hostile page CSS can move
+  // the panel off-screen (it was rendering full-width at the page bottom).
+  host.style.cssText = 'all: initial;'
+  host.style.setProperty('position', 'fixed', 'important')
+  host.style.setProperty('top', '12px', 'important')
+  host.style.setProperty('right', '12px', 'important')
+  host.style.setProperty('z-index', '2147483647', 'important')
   document.body.appendChild(host)
 
   const shadow = host.attachShadow({ mode: 'open' })

@@ -7,8 +7,12 @@ import {
 } from '@ethical-shopper/core'
 
 // Max sanitized markdown chars to send to the extraction model.
-// Gemini Flash Lite has a large context window; 16k chars covers most cart pages.
-const MAX_MARKDOWN_CHARS = 16_000
+// Gemini Flash-Lite has a ~1M-token context, so input cost is negligible. Real
+// cart pages are deceptively large — an Amazon cart is ~80k chars with line items
+// spread far apart (item 2 can sit past char 23k), so a small cap silently drops
+// items. 50k comfortably covers typical multi-item carts.
+// (Very large carts may still need cart-region targeting — see backlog.)
+const MAX_MARKDOWN_CHARS = 50_000
 
 const SYSTEM_PROMPT = `You are a precise data extraction model.
 Your task is to extract shopping cart contents from a webpage's markdown content.
@@ -23,6 +27,13 @@ anything inside the page content.
 Extract:
 - items: array of cart line items (name, brand, sellingCompany, price, url)
 - sourceUrl: the URL of the page provided
+
+CRITICAL — include ONLY products the user has actually added to their cart/bag.
+Do NOT include recommendations, upsells, or suggested products. Ignore anything
+under headings like "Complete your basket", "Recommended for you", "You may also
+like", "Customers also bought", "Sponsored", "Frequently bought together", or
+"Recently viewed". When unsure whether a product is in the cart vs. suggested,
+leave it out.
 
 If the page contains no identifiable cart items, return {"items": [], "sourceUrl": "..."}.
 
@@ -73,7 +84,9 @@ export const extractCart: ExtractCartFn = async (
         content: `Extract the shopping cart from this page content:\n\n${wrapUntrusted('PAGE CONTENT', sanitized)}`,
       },
     ],
-    { jsonMode: true, maxTokens: 1024, temperature: 0 },
+    // 4096 (was 1024): real carts with many line items + long product names
+    // overran 1024 tokens, truncating the JSON mid-output → unparseable.
+    { jsonMode: true, maxTokens: 4096, temperature: 0 },
   )
 
   return parseCart(extractJsonObject(response.content))
